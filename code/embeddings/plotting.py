@@ -33,14 +33,15 @@ except ImportError:
 # Configuration
 # ============================================================================
 class Config:
-    def __init__(self, model_type="base"):
+    def __init__(self, model_type="base", limit_samples=True):
         self.model_type = model_type  # 'base' or 'finetuned'
+        self.limit_samples = limit_samples
         
         # Paths
         self.base_data_dir = Path("/home/u933585/thesis/data/assemblies/processed_files/")
         self.output_root = Path(f"/home/u933585/thesis/{self.model_type}_kmeans_global_pca/")
         self.models_dir = self.output_root / "models"
-        self.plots_dir = self.output_root / "plots_visual_update" # New folder for specific request
+        self.plots_dir = self.output_root / f"plots_visual_update_limit{self.limit_samples}"
         
         self.plots_dir.mkdir(parents=True, exist_ok=True)
         
@@ -56,8 +57,12 @@ class Config:
         self.content_word_threshold = 5
         
         # Sampling Limits for Visualization
-        self.samples_expert = 100
-        self.samples_assembly = 150
+        if self.limit_samples:
+            self.samples_expert = 200
+            self.samples_assembly = 250
+        else:
+            self.samples_expert = None
+            self.samples_assembly = None
         
         # Topics
         self.topics = ["constitution", "future", "gender"]
@@ -69,9 +74,9 @@ class Config:
         
         # Colors
         self.topic_colors = {
-            "constitution": '#ff7f0e', # Orange
-            "future": '#2ca02c',      # Green
-            "gender": "#d62728"       # Red
+            "constitution": "#2E86AB", # Deep Teal Blue
+            "gender": "#A23B72",       # Rich Magenta
+            "future": "#F18F01"        # Warm Orange
         }
 
         np.random.seed(self.random_seed)
@@ -167,30 +172,40 @@ def generate_plots(
         ax = plt.gca()
         
         # --- SAMPLING LOGIC ---
-        # Requirement 4: Uniform sampling (100 experts, 150 assemblies)
+        # If limits are set, sample. Otherwise, use all data.
         df_sampled = pd.DataFrame()
         
-        # Sample Experts
+        # Sample/Select Experts
         for topic in config.topics:
             subset = df_all[(df_all['type'] == 'expert') & (df_all['topic'] == topic)]
             if not subset.empty:
-                n_samples = min(len(subset), config.samples_expert)
-                df_sampled = pd.concat([df_sampled, subset.sample(n=n_samples, random_state=config.random_seed)])
+                if config.samples_expert is not None:
+                    n_samples = min(len(subset), config.samples_expert)
+                    df_sampled = pd.concat([df_sampled, subset.sample(n=n_samples, random_state=config.random_seed)])
+                else:
+                    # No limit - use all samples
+                    df_sampled = pd.concat([df_sampled, subset])
         
-        # Sample Assemblies (if included)
+        # Sample/Select Assemblies (if included)
         if include_assemblies:
             for topic in config.topics:
                 subset = df_all[(df_all['type'] == 'assembly') & (df_all['topic'] == topic)]
                 if not subset.empty:
-                    n_samples = min(len(subset), config.samples_assembly)
-                    df_sampled = pd.concat([df_sampled, subset.sample(n=n_samples, random_state=config.random_seed)])
+                    if config.samples_assembly is not None:
+                        n_samples = min(len(subset), config.samples_assembly)
+                        df_sampled = pd.concat([df_sampled, subset.sample(n=n_samples, random_state=config.random_seed)])
+                    else:
+                        # No limit - use all samples
+                        df_sampled = pd.concat([df_sampled, subset])
 
         # --- DRAWING ---
         
-        # 1. Draw Experts
         # Requirement 3: If combined, experts are transparent. If alone, opaque.
-        exp_alpha = 0.15 if include_assemblies else 0.7
-        exp_size = 60 if include_assemblies else 80
+        exp_alpha = 0.3 if include_assemblies else 0.7
+        exp_size = 120
+        ass_alpha = 0.6 if config.limit_samples else 0.3
+        ass_size = 180 if include_assemblies else 100
+
         
         for topic, group in df_sampled[df_sampled['type'] == 'expert'].groupby('topic'):
             color = config.topic_colors.get(topic, 'gray')
@@ -214,9 +229,9 @@ def generate_plots(
                     c=color, 
                     marker='^',
                     label=f"Assembly: {topic.title()}", 
-                    alpha=0.9,      # Very Opaque
-                    s=180,          # Bigger
-                    edgecolors='white', 
+                    alpha=ass_alpha,      # Very Opaque
+                    s=ass_size,          # Bigger
+                    edgecolors='none', 
                     linewidth=1.0
                 )
 
@@ -243,9 +258,12 @@ def generate_plots(
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         
+        # Legend position: bottom right for finetuned, upper right for base
+        legend_loc = 'lower right' if config.model_type == 'finetuned' else 'upper right'
+        
         leg = plt.legend(
             by_label.values(), by_label.keys(), 
-            loc='upper right', 
+            loc=legend_loc, 
             frameon=True, 
             framealpha=0.95, 
             fontsize=20,          # Big font
@@ -254,7 +272,7 @@ def generate_plots(
         )
         
         # Increase dot size in legend for visibility
-        for handle in leg.legendHandles:
+        for handle in leg.legend_handles:
             handle.set_sizes([150]) 
             handle.set_alpha(1) # Legend icons should be fully visible
 
@@ -286,46 +304,48 @@ def main():
     # We do this once per model type (Base vs Finetuned)
     
     for m_type in ['base', 'finetuned']:
-        config = Config(model_type=m_type)
-        print(f"\n{'='*60}\nPROCESSING: {m_type.upper()}\n{'='*60}")
-        
-        # 1. Load Data
-        print("Loading text data...")
-        expert_texts = {}
-        expert_dir = config.base_data_dir / "experts"
-        for topic in config.topics:
-            files = sorted((expert_dir / topic).glob("*.csv"))
-            texts = []
-            for f in files:
-                texts.extend(load_and_filter_csv(f, config.content_word_threshold))
-            expert_texts[topic] = texts
+        for limit_samples in [True, False]:
+            print(f"Preparing data for model type: {m_type}, limit_samples: {limit_samples}")
+            config = Config(model_type=m_type, limit_samples=limit_samples)
+            print(f"\n{'='*60}\nPROCESSING: {m_type.upper()} (LIMIT={limit_samples})\n{'='*60}")
+            
+            # 1. Load Data
+            print("Loading text data...")
+            expert_texts = {}
+            expert_dir = config.base_data_dir / "experts"
+            for topic in config.topics:
+                files = sorted((expert_dir / topic).glob("*.csv"))
+                texts = []
+                for f in files:
+                    texts.extend(load_and_filter_csv(f, config.content_word_threshold))
+                expert_texts[topic] = texts
 
-        assembly_texts = {}
-        for folder, (topic, name) in config.assembly_mappings.items():
-            files = sorted((config.base_data_dir / folder).glob("*.csv"))
-            texts = []
-            for f in files:
-                texts.extend(load_and_filter_csv(f, config.content_word_threshold))
-            if texts:
-                assembly_texts[folder] = {'topic': topic, 'texts': texts}
+            assembly_texts = {}
+            for folder, (topic, name) in config.assembly_mappings.items():
+                files = sorted((config.base_data_dir / folder).glob("*.csv"))
+                texts = []
+                for f in files:
+                    texts.extend(load_and_filter_csv(f, config.content_word_threshold))
+                if texts:
+                    assembly_texts[folder] = {'topic': topic, 'texts': texts}
 
-        # 2. Embed Data (Required to project onto saved UMAP)
-        print(f"Loading {m_type} embedding model...")
-        model = SentenceTransformer(config.emb_model_path, device=device, trust_remote_code=True)
-        
-        print("Generating embeddings...")
-        exp_data = {t: {'embeddings': embed_texts(model, txts, config.batch_size, device)} 
-                   for t, txts in expert_texts.items()}
-        
-        ass_data = {f: {**d, 'embeddings': embed_texts(model, d['texts'], config.batch_size, device)} 
-                   for f, d in assembly_texts.items()}
+            # 2. Embed Data (Required to project onto saved UMAP)
+            print(f"Loading {m_type} embedding model...")
+            model = SentenceTransformer(config.emb_model_path, device=device, trust_remote_code=True)
+            
+            print("Generating embeddings...")
+            exp_data = {t: {'embeddings': embed_texts(model, txts, config.batch_size, device)} 
+                    for t, txts in expert_texts.items()}
+            
+            ass_data = {f: {**d, 'embeddings': embed_texts(model, d['texts'], config.batch_size, device)} 
+                    for f, d in assembly_texts.items()}
 
-        # 3. Generate Visualizations using saved PCA/UMAP
-        generate_plots(exp_data, ass_data, config)
-        
-        # Cleanup to free GPU memory for next iteration
-        del model
-        torch.cuda.empty_cache()
+            # 3. Generate Visualizations using saved PCA/UMAP
+            generate_plots(exp_data, ass_data, config)
+            
+            # Cleanup to free GPU memory for next iteration
+            del model
+            torch.cuda.empty_cache()
 
     print("\n✅ Visualization update complete.")
 

@@ -1,0 +1,18 @@
+============================================================
+CONCISE METRICS SUMMARY: BASE vs FINETUNED
+============================================================
+
+METRIC                         | BASE         | FINETUNED   
+------------------------------------------------------------
+Global Expert Accuracy         | 88.8%        | 98.2%       
+Avg Silhouette                 | 0.0814       | 0.1165      
+
+PER-TOPIC EXPERT ACCURACY:
+CONSTITUTION                   | 95.3%        | 98.9%       
+FUTURE                         | 88.6%        | 97.7%       
+GENDER                         | 81.9%        | 98.0%       
+
+ASSEMBLY CROSS-TOPIC ACCURACY (Natural Assignment):
+8th_amendment                  | 66.4%        | 65.1%       
+gendereq                       | 31.6%        | 25.4%       
+scotland                       | 49.9%        | 44.2%       
