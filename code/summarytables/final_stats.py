@@ -25,8 +25,8 @@ except ImportError:
 # Configuration
 # ============================================================================
 
-ASSEMBLIES_DIR = Path("/home/u933585/thesis/data/assemblies/processed_files")
-EXPERTS_DIR = Path("/home/u933585/thesis/data/assemblies/processed_files/experts")
+ASSEMBLIES_DIR = Path("data/assemblies/processed_files")
+EXPERTS_DIR = Path("data/assemblies/processed_files/experts")
 OUTPUT_DIR = Path("corpus_statistics")
 
 # Topic mappings
