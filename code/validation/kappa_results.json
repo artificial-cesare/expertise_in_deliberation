@@ -1,0 +1,202 @@
+{
+  "metadata": {
+    "total_speeches": 17,
+    "analyzed_speeches": 17,
+    "analyzed_percentage": 100.0,
+    "n_human_raters": 3,
+    "filter_criterion": "All speeches (no filtering)",
+    "extreme_only": false,
+    "excluded_speeches": [
+      "assemblies/scotland/8992int020_speeches.csv/row_67",
+      "experts/constitution/committees.parliament.uk_speeches.csv/row_0",
+      "experts/future/committees.parliament.uk_speeches.csv/row_69"
+    ],
+    "n_excluded": 3
+  },
+  "speech_ids": [
+    "experts/gender/committees.parliament.uk3_speeches.csv/row_75",
+    "experts/constitution/committees.parliament.uk1_speeches.csv/row_64",
+    "experts/future/committees.parliament.uk4_speeches.csv/row_6",
+    "experts/constitution/committees.parliament.uk2_speeches.csv/row_136",
+    "experts/constitution/committees.parliament.uk2_speeches.csv/row_117",
+    "experts/future/committees.parliament.uk1_speeches.csv/row_90",
+    "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_13",
+    "experts/gender/committees.parliament.uk_speeches.csv/row_34",
+    "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_10",
+    "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_82",
+    "experts/gender/committees.parliament.uk3_speeches.csv/row_80",
+    "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_17",
+    "experts/constitution/3_speeches.csv/row_129",
+    "assemblies/scotland/8992int012_speeches.csv/row_9",
+    "experts/gender/committees.parliament.uk5_speeches.csv/row_63",
+    "assemblies/scotland/8992int019_speeches.csv/row_78",
+    "assemblies/8th_amendment/Transcript-of-Sunday-9-July-Voting-_speeches.csv/row_223"
+  ],
+  "llm_vs_humans": {
+    "llm_vs_717": {
+      "n_samples": 17,
+      "kappa_unweighted": 0.10526315789473695,
+      "kappa_weighted_quadratic": 0.6295399515738499,
+      "speech_ids": [
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_75",
+        "experts/constitution/committees.parliament.uk1_speeches.csv/row_64",
+        "experts/future/committees.parliament.uk4_speeches.csv/row_6",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_136",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_117",
+        "experts/future/committees.parliament.uk1_speeches.csv/row_90",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_13",
+        "experts/gender/committees.parliament.uk_speeches.csv/row_34",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_10",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_82",
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_80",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_17",
+        "experts/constitution/3_speeches.csv/row_129",
+        "assemblies/scotland/8992int012_speeches.csv/row_9",
+        "experts/gender/committees.parliament.uk5_speeches.csv/row_63",
+        "assemblies/scotland/8992int019_speeches.csv/row_78",
+        "assemblies/8th_amendment/Transcript-of-Sunday-9-July-Voting-_speeches.csv/row_223"
+      ]
+    },
+    "llm_vs_5555": {
+      "n_samples": 17,
+      "kappa_unweighted": 0.10526315789473684,
+      "kappa_weighted_quadratic": 0.6005221932114883,
+      "speech_ids": [
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_75",
+        "experts/constitution/committees.parliament.uk1_speeches.csv/row_64",
+        "experts/future/committees.parliament.uk4_speeches.csv/row_6",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_136",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_117",
+        "experts/future/committees.parliament.uk1_speeches.csv/row_90",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_13",
+        "experts/gender/committees.parliament.uk_speeches.csv/row_34",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_10",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_82",
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_80",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_17",
+        "experts/constitution/3_speeches.csv/row_129",
+        "assemblies/scotland/8992int012_speeches.csv/row_9",
+        "experts/gender/committees.parliament.uk5_speeches.csv/row_63",
+        "assemblies/scotland/8992int019_speeches.csv/row_78",
+        "assemblies/8th_amendment/Transcript-of-Sunday-9-July-Voting-_speeches.csv/row_223"
+      ]
+    },
+    "llm_vs_1001100": {
+      "n_samples": 17,
+      "kappa_unweighted": 0.030701754385964897,
+      "kappa_weighted_quadratic": 0.4968287526427061,
+      "speech_ids": [
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_75",
+        "experts/constitution/committees.parliament.uk1_speeches.csv/row_64",
+        "experts/future/committees.parliament.uk4_speeches.csv/row_6",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_136",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_117",
+        "experts/future/committees.parliament.uk1_speeches.csv/row_90",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_13",
+        "experts/gender/committees.parliament.uk_speeches.csv/row_34",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_10",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_82",
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_80",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_17",
+        "experts/constitution/3_speeches.csv/row_129",
+        "assemblies/scotland/8992int012_speeches.csv/row_9",
+        "experts/gender/committees.parliament.uk5_speeches.csv/row_63",
+        "assemblies/scotland/8992int019_speeches.csv/row_78",
+        "assemblies/8th_amendment/Transcript-of-Sunday-9-July-Voting-_speeches.csv/row_223"
+      ]
+    }
+  },
+  "inter_human": {
+    "717_vs_5555": {
+      "n_samples": 17,
+      "kappa_unweighted": 0.1428571428571429,
+      "kappa_weighted_quadratic": 0.43843843843843844,
+      "speech_ids": [
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_75",
+        "experts/constitution/committees.parliament.uk1_speeches.csv/row_64",
+        "experts/future/committees.parliament.uk4_speeches.csv/row_6",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_136",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_117",
+        "experts/future/committees.parliament.uk1_speeches.csv/row_90",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_13",
+        "experts/gender/committees.parliament.uk_speeches.csv/row_34",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_10",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_82",
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_80",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_17",
+        "experts/constitution/3_speeches.csv/row_129",
+        "assemblies/scotland/8992int012_speeches.csv/row_9",
+        "experts/gender/committees.parliament.uk5_speeches.csv/row_63",
+        "assemblies/scotland/8992int019_speeches.csv/row_78",
+        "assemblies/8th_amendment/Transcript-of-Sunday-9-July-Voting-_speeches.csv/row_223"
+      ]
+    },
+    "717_vs_1001100": {
+      "n_samples": 17,
+      "kappa_unweighted": 0.25728155339805825,
+      "kappa_weighted_quadratic": 0.6751592356687898,
+      "speech_ids": [
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_75",
+        "experts/constitution/committees.parliament.uk1_speeches.csv/row_64",
+        "experts/future/committees.parliament.uk4_speeches.csv/row_6",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_136",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_117",
+        "experts/future/committees.parliament.uk1_speeches.csv/row_90",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_13",
+        "experts/gender/committees.parliament.uk_speeches.csv/row_34",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_10",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_82",
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_80",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_17",
+        "experts/constitution/3_speeches.csv/row_129",
+        "assemblies/scotland/8992int012_speeches.csv/row_9",
+        "experts/gender/committees.parliament.uk5_speeches.csv/row_63",
+        "assemblies/scotland/8992int019_speeches.csv/row_78",
+        "assemblies/8th_amendment/Transcript-of-Sunday-9-July-Voting-_speeches.csv/row_223"
+      ]
+    },
+    "5555_vs_1001100": {
+      "n_samples": 17,
+      "kappa_unweighted": 0.15702479338842967,
+      "kappa_weighted_quadratic": 0.3744889615699101,
+      "speech_ids": [
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_75",
+        "experts/constitution/committees.parliament.uk1_speeches.csv/row_64",
+        "experts/future/committees.parliament.uk4_speeches.csv/row_6",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_136",
+        "experts/constitution/committees.parliament.uk2_speeches.csv/row_117",
+        "experts/future/committees.parliament.uk1_speeches.csv/row_90",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_13",
+        "experts/gender/committees.parliament.uk_speeches.csv/row_34",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_10",
+        "assemblies/8th_amendment/Transcript-of-Final-Weekend-Sat-Sun-1_speeches.csv/row_82",
+        "experts/gender/committees.parliament.uk3_speeches.csv/row_80",
+        "assemblies/gendereq/leadership-video-feedback_transcript_speeches.csv/row_17",
+        "experts/constitution/3_speeches.csv/row_129",
+        "assemblies/scotland/8992int012_speeches.csv/row_9",
+        "experts/gender/committees.parliament.uk5_speeches.csv/row_63",
+        "assemblies/scotland/8992int019_speeches.csv/row_78",
+        "assemblies/8th_amendment/Transcript-of-Sunday-9-July-Voting-_speeches.csv/row_223"
+      ]
+    }
+  },
+  "summary": {
+    "llm_vs_humans": {
+      "avg_kappa_unweighted": 0.08040935672514622,
+      "std_kappa_unweighted": 0.03514858269055941,
+      "min_kappa_unweighted": 0.030701754385964897,
+      "max_kappa_unweighted": 0.10526315789473695,
+      "avg_kappa_weighted": 0.5756302991426815,
+      "std_kappa_weighted": 0.0569664835564734
+    },
+    "inter_human": {
+      "avg_kappa_unweighted": 0.1857211632145436,
+      "std_kappa_unweighted": 0.05093032929278199,
+      "min_kappa_unweighted": 0.1428571428571429,
+      "max_kappa_unweighted": 0.25728155339805825,
+      "avg_kappa_weighted": 0.4960288785590461,
+      "std_kappa_weighted": 0.1293268405414175
+    }
+  },
+  "comparison_note": "These kappa scores are calculated on ALL speeches (no extreme score filtering). 3 problematic speeches with high disagreement were excluded from the analysis."
+}
