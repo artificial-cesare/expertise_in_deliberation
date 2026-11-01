@@ -66,9 +66,15 @@ def stats(score, label):
     c = s[(s.assembly == "Constitutional Reform") & s.role.isin(["expert", "participant"])]
     rr = residual(c.m.values, [c.loglen]); sd = c.m.std()
     gap = (rr[(c.role == "expert").values].mean() - rr[(c.role == "participant").values].mean()) / sd
+    # OLS: measure ~ 1 + log length + expert; two-sided t-test on the expert coefficient
+    X = np.column_stack([np.ones(len(c)), c.loglen.values, (c.role == "expert").values.astype(float)])
+    b, *_ = np.linalg.lstsq(X, c.m.values, rcond=None); e = c.m.values - X @ b
+    se = np.sqrt((e @ e) / (len(c) - 3) * np.linalg.inv(X.T @ X)[2, 2])
+    from scipy.stats import t as tdist
+    gap_p = float(2 * tdist.sf(abs(b[2] / se), len(c) - 3))
     within = {a: round(pearsonr(g.m, g.expertise_llm_score)[0], 3) for a, g in s.groupby("assembly")}
     return {"measure": label, "r_llm": round(r, 3), "p": float(p), "partial_r_llm": round(pr, 3), "partial_p": float(pp),
-            "within_assembly_r": within, "expert_vs_citizen_gap_sd_equal_length": round(float(gap), 2)}
+            "within_assembly_r": within, "expert_vs_citizen_gap_sd_equal_length": round(float(gap), 2), "gap_p": round(gap_p, 4)}
 
 res = {}
 for name in args.models:
@@ -118,7 +124,7 @@ for name in args.models:
     print(json.dumps(R["check_stored"]))
     for m in R["measures"]:
         print(f"  {m['measure']:45s} r={m['r_llm']:+.3f} partial={m['partial_r_llm']:+.3f} "
-              f"gap(SD)={m['expert_vs_citizen_gap_sd_equal_length']:+.2f} acc={m.get('assembly_accuracy','')} within={m['within_assembly_r']}", flush=True)
+              f"gap(SD)={m['expert_vs_citizen_gap_sd_equal_length']:+.2f} p={m['gap_p']:.3f} acc={m.get('assembly_accuracy','')} within={m['within_assembly_r']}", flush=True)
 
 (OUT / "embedding_space_check.json").write_text(json.dumps(res, indent=1))
 print("saved", OUT / "embedding_space_check.json")
