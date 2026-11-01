@@ -17,14 +17,63 @@ expertise_in_deliberation/
 │   ├── correlation_analysis/       # Statistical analysis
 │   ├── embeddings/                 # Embedding-based analysis
 │   ├── handcrafted_features/       # Linguistic feature extraction
-│   ├── LLM_expertise/              # LLM-based expertise scoring
-│   └── preprocessing/              # Data preprocessing
+│   ├── LLM_expertise/              # LLM-based expertise scoring + context calibration
+│   ├── preprocessing/              # Data preprocessing
+│   ├── summarytables/              # Corpus statistics (LaTeX tables)
+│   └── validation/                 # Human-annotation agreement (Cohen's kappa)
+├── reproduce/                      # One-command rebuild of the paper's results
+├── tests/                          # Toy checks for reproduce/
 ├── data/                           # Data files
 │   ├── raw/                        # Raw Assemblies and expert transcripts 
-│   └── vocab/                      # Domain vocabulary sources
+│   ├── vocab/                      # Domain vocabulary sources
+│   └── CHECKSUMS.sha256            # Hashes of the frozen processed CSVs
+├── outputs/                        # Generated results (not in git)
 ├── llm_exp_requirements.txt        # LLM analysis dependencies
 └── qwen3_requirements.txt          # Embedding model dependencies
 ```
+
+## Reproducing the paper
+
+Everything that needs only the processed CSVs (no GPU, no API key) rebuilds with one command from the repo root:
+
+```bash
+bash reproduce/run_all.sh        # PY=/path/to/python picks the environment
+```
+
+| Paper result | Script | Rebuilt from the CSVs? |
+|---|---|---|
+| Tables 1, 3, 6 (corpus, features, scores) | `code/summarytables/final_stats.py` | Yes, identical |
+| Table 4 (k-means accuracy) | `code/embeddings/k_means_exp.py` | No: needs the fine-tuned model. Recorded in `code/embeddings/kmeans_concise_summary.txt` |
+| Table 5 (kappa) | `code/validation/kappa_filtered_new.py` | Yes, identical |
+| Figs 1-2 (UMAP) | `code/embeddings/plotting.py` | No: needs the fine-tuned model |
+| Figs 3-4, Appendix B (correlations) | `reproduce/correlations.py` | Yes, pixel-identical with `--scotland-llm drop` |
+| Appendix C (temporal plots) | `reproduce/correlations.py` | Yes, up to the order files are read in |
+| Section 5.4, Table 7 (Kruskal-Wallis) | `reproduce/temporal_kw.py` | Yes, all values |
+| Context calibration (Methods, "LLM Instruction Prompting") | `code/LLM_expertise/context_size_calibration.py` | No: needs the OpenAI API; the original output was not kept |
+
+Points to know before reusing these numbers:
+
+- **The published correlation figures leave out Scotland's LLM scores.** They were made before Scotland was scored, so every LLM-score cell uses the two Irish assemblies only (n = 537), while all other cells use all three (n = 3,183). `--scotland-llm drop` reproduces the published figures; the default `keep` includes Scotland's scores.
+- **The temporal tests (Table 7) use no content-word filter**, while the tables use >= 5 content words and the correlations use > 5. `reproduce/temporal_kw.py --min-words 5` applies the filter. No script for Table 7 survived; `temporal_kw.py` is a reconstruction that matches every published value.
+- **The embedding columns** (`distance_*`, `similarity_*`) were written on the GPU machine by a variant of `code/embeddings/final_centroids.py` that was not saved, using a fine-tuned model that is also lost. They can be reused from the CSVs but not regenerated exactly.
+- **The LLM scores use a fixed 20-utterance context window** (`llm_expert_extract_new.py`), and the calibration script uses a newer prompt than the one in Appendix A.
+
+## Local data (not in git)
+
+The scripts expect this layout, relative to the repo root:
+
+```
+data/assemblies/processed_files/{8th_amendment,gendereq,scotland}/   # *_speeches.csv with all features and scores
+data/assemblies/processed_files/experts/{constitution,future,gender}/
+data/raw/scotland/                                                   # raw Scotland transcripts (.rtf)
+data/validation/                                                     # sampled_speeches.json, annotations_csv/
+```
+
+Only `data/raw` (Irish and expert transcripts) and `data/vocab` are versioned. The Scotland transcripts are licensed through the UK Data Archive and must not be committed; the annotation files quote them too. `.gitignore` excludes all of these. Check that the processed CSVs are the frozen version with `shasum -a 256 -c data/CHECKSUMS.sha256`. `new_feats_extract.py`, `llm_expert_extract_new.py` and the embedding scripts rewrite CSVs in place, so run them on a copy.
+
+## Adding recovered GPU code
+
+The scripts in `code/` are the versions the paper was built with. To bring in code recovered from the GPU machine, copy its `code/` folder over this one and run `git status` and `git diff`: they show exactly which files differ from the paper's versions.
 
 ## Components
 
