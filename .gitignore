@@ -19,6 +19,7 @@ data/assemblies/*
 !data/assemblies/raw/
 data/assemblies/raw/*
 !data/assemblies/raw/8th_amendment/
+!data/assemblies/raw/ageing_population/
 !data/assemblies/raw/gendereq/
 !data/assemblies/raw/experts/
 data/assemblies/raw/**/*_debug_*
