@@ -2,6 +2,9 @@
 
 Revised corpus: the ageing-population transcript (data/assemblies/processed_files/ageing_population/)
 is no longer part of "Constitutional Reform". All three assemblies' LLM scores are used.
+Substantial utterances: >= 5 content words everywhere ("gt5" results are kept for comparison only).
+lexical_sophistication and evidential_markers are the corrected v2 columns from
+outputs/paper_v2/features_v2.csv (run reproduce/features_v2.py first); the originals are kept as *_v1.
 Writes outputs/paper_v2/stats.json and prints a readable summary.
 Run from the repo root:  python reproduce/paper_v2_stats.py
 """
@@ -28,10 +31,14 @@ def role(label: str) -> str:
     if x == "MS. FINEGAN": return "secretariat"
     if re.search(r"^CHAIR|CATHERINE DAY|GENERAL ANNOUNCEMENT", x): return "chair"
     if re.search(r"FACILITATOR|^F ?\d*$|^F\d$", x): return "facilitator"
-    if re.search(r"^(BREAKOUT GROUP|TABLE) ?\d+$", x): return "table spokesperson"
+    if re.search(r"^(BREAKOUT GROUP|TABLE) ?\d+$", x): return "rapporteur"
     if re.search(r"CITIZEN|PARTICIPANT|ASSEMBLY MEMBER|^P ?\d*$|^R$|^TABLE \d+ - (?!FACILITATOR)|^(JORDAN|DAVE|FRANK|FIONNUALA|WILLIAM O'HALLORAN)$", x):
         return "participant"
     return "unknown"
+
+
+ROLE_GROUP = {"expert": "expert", "participant": "participant", "chair": "facilitation", "facilitator": "facilitation",
+              "secretariat": "facilitation", "rapporteur": "rapporteur", "unknown": "unknown"}
 
 
 def load() -> pd.DataFrame:
@@ -45,6 +52,13 @@ def load() -> pd.DataFrame:
             parts.append(d)
     d = pd.concat(parts, ignore_index=True)
     d["role"] = d.speaker.map(role)
+    d["role_group"] = d.role.map(ROLE_GROUP)
+    v2 = Path("outputs/paper_v2/features_v2.csv")
+    if v2.exists():
+        d["row"] = d.groupby("file").cumcount()
+        d = d.merge(pd.read_csv(v2).drop(columns="folder"), on=["file", "row"], how="left")
+        for f in ("lexical_sophistication", "evidential_markers"):
+            d[f + "_v1"] = d[f]; d[f] = d[f + "_v2"]
     d["words"] = d.text.astype(str).str.split().str.len()
     d["loglen"] = np.log1p(d.length_tokens)
     return d
@@ -101,7 +115,7 @@ def main():
         dums = [(x.assembly == v).astype(float).values for v in sorted(x.assembly.unique())[1:]]
         S[f"r2_{lab}"] = {"assembly": r2(dums), "loglen": r2([x.loglen.values]), "both": r2(dums + [x.loglen.values])}
     # Speaker roles (>=5)
-    g = s5.groupby(["assembly", "role"])
+    g = s5.groupby(["assembly", "role_group"])
     S["roles"] = g.agg(n=("expertise_llm_score", "size"), llm_mean=("expertise_llm_score", "mean"),
                        argqa_mean=("overall_score", "mean"), median_tokens=("length_tokens", "median")).round(2).reset_index().to_dict("records")
     c = s5[s5.assembly == "Constitutional Reform"]
