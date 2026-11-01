@@ -20,17 +20,19 @@ import time
 import numpy as np
 import pandas as pd
 import tiktoken
-from openai import OpenAI
 from scipy.stats import spearmanr
 from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Import the existing scoring function
 sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'handcrafted_features'))
+
+from filter_function import count_content_words
+from llm_utils import count_tokens, extract_topic, score_expertise_with_llm
 
 # Constants
-CONTEXT_BUDGETS = [0, 500, 1000, 1500, 2000]
+CONTEXT_BUDGETS = [0, 100, 500, 1000]
 SUBSET_SIZE = 200
 RANDOM_SEED = 42
 MODEL = "gpt-4o-mini"
@@ -55,41 +57,6 @@ class Utterance:
     content_word_count: int
     is_substantial: bool
     date: str = ""
-
-
-def count_tokens(text: str, encoding) -> int:
-    """Count tokens in text using tiktoken."""
-    try:
-        return len(encoding.encode(text))
-    except Exception as e:
-        print(f"Warning: Token counting failed: {e}")
-        return len(text.split()) * 1.3  # Rough estimate
-
-
-def count_content_words(text: str) -> int:
-    """
-    Count non-function words (content words) in text.
-    This should match the logic in your existing code.
-    """
-    # Common English function words
-    function_words = {
-        'a', 'an', 'the', 'and', 'or', 'but', 'if', 'because', 'as', 'until',
-        'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between',
-        'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to',
-        'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again',
-        'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how',
-        'all', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such',
-        'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
-        's', 't', 'can', 'will', 'just', 'don', 'should', 'now', 'i', 'you',
-        'he', 'she', 'it', 'we', 'they', 'them', 'their', 'what', 'which', 'who',
-        'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has',
-        'had', 'do', 'does', 'did', 'would', 'could', 'should', 'may', 'might',
-        'must', 'shall'
-    }
-
-    words = text.lower().split()
-    content_words = [w for w in words if w not in function_words and len(w) > 0]
-    return len(content_words)
 
 
 def load_assembly_data(base_dir: str, assembly: str, encoding) -> List[Utterance]:
@@ -366,148 +333,6 @@ def build_context_20_utterances(
     return context_string, tokens_used, len(context_utterances)
 
 
-def score_expertise_with_llm(
-    contribution: str,
-    context: str,
-    topic: str,
-    api_key: str,
-    model: str = "gpt-4o-mini"
-) -> Tuple[Optional[int], str]:
-    """
-    Score expertise level using LLM.
-    This uses the EXISTING prompt from your codebase.
-
-    Args:
-        contribution: The speech act to evaluate
-        context: Previous speech acts for context
-        topic: Topic of deliberation
-        api_key: OpenAI API key
-        model: Model to use
-
-    Returns:
-        Tuple of (rating 1-5, justification string)
-    """
-    import re
-
-    client = OpenAI(api_key=api_key)
-
-    system_prompt = """You are a political innovations expert assisting a research study on deliberative communication.
-Your task is to assess how much a given speech act demonstrates domain expertise on the topic under discussion.
-Refer to previous context to assess how the current speech act signifies expertise in the current discussion topics.
-
-Definition:
-"Expertise" here refers to the expression of relevant and well-grounded knowledge about the topic, which may be demonstrated through technical understanding, analytical reasoning, or situated experiential knowledge.
-
-Expertise can be expressed in different forms. In deliberative settings, participants may legitimately draw on professional knowledge, formal training, policy familiarity, or lived experience and practical engagement with the issue.
-Statements grounded in personal or lived experience should not be penalised, provided they are used to illuminate, generalise, or reason about the issue rather than to express purely subjective preference or emotion.
-
-Evaluate one speaker's statement in the context of an ongoing deliberation.
-The input may include minor transcription errors (from speech-to-text).
-
-When deciding, rely on well-established linguistic indicators of expertise, such as:
-
-- Use of domain-specific or technical vocabulary, where appropriate (precision, correct terminology);
-
-- Structured reasoning and inferential coherence, including explicit or implicit logical relations such as:
-
-    - Cause–effect: because, since, therefore, thus, hence.
-
-    - Entailment or consequence: it follows that, as a consequence, this implies that.
-
-    - Conditional inference / modus ponens: if … then …, given that … we can conclude ….
-
-    - Syllogistic or categorical reasoning: all X are Y; this is X; therefore ….
-
-- Evidence or grounding markers, including references to data, institutions, policy mechanisms, or systematically described personal experience (e.g. repeated exposure, first-hand involvement, comparison across cases);
-
-- Epistemic calibration (balanced use of hedges like "may", "might", "suggests", showing awareness of uncertainty);
-
-- Syntactic and lexical complexity where it serves explanation or reasoning clarity;
-
-- Analytical use of experience (personal or lived experience used to support general claims, causal reasoning, or problem understanding);
-
-- Relevance to the current topic (staying on-topic with informed contributions).
-
-Do not penalise statements solely because they rely on lived experience or personal involvement.
-However, distinguish analytical experiential reasoning from statements that are purely anecdotal, emotive, or preference-based without broader reasoning.
-
-Avoid judging based on fluency, confidence tone, or opinion alignment.
-Focus purely on linguistic, reasoning and content cues that signal expertise or informed understanding.
-
-You must return a rating on a 1–5 Likert scale:
-
-1 — Strongly Disagree: clearly non-expert (uninformed, vague, purely emotive, unreasoned anecdote, or incorrect)
-2 — Disagree: likely non-expert (limited reasoning, weak grounding, minimal analytical content)
-3 — Undecided: ambiguous or generic statement (no clear expert or non-expert cues)
-4 — Agree: likely expert (clear reasoning, grounded claims, or analytically used experience)
-5 — Strongly Agree: clearly expert (precise terminology and/or well-articulated experiential insight, coherent reasoning, strong grounding)
-
-Give a one-sentence justification referencing linguistic or reasoning cues.
-
-Format your answer exactly as:
-Rating: x/5. Justification: [One concise sentence]."""
-
-    user_prompt = f"""Topic of deliberation: {topic}
-
-Here is the transcript of the deliberation from before the statement which is to be evaluated. This serves as the context for the evaluation:
-
-{context}
-
-Here is the statement which you have to evaluate:
-
-{contribution}
-
-Please evaluate whether the speaker demonstrates expertise on this topic."""
-
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3,
-            max_tokens=150
-        )
-
-        result = response.choices[0].message.content.strip()
-
-        # Parse rating
-        rating = None
-        justification = result
-
-        rating_match = re.search(r'Rating:\s*(\d)', result)
-        if rating_match:
-            rating = int(rating_match.group(1))
-
-        # Extract justification
-        just_match = re.search(r'Justification:\s*(.+)', result, re.IGNORECASE)
-        if just_match:
-            justification = just_match.group(1).strip()
-
-        # Validate rating
-        if rating is None or rating < 1 or rating > 5:
-            print(f"  Warning: Invalid rating parsed: {result}")
-            rating = 3  # Default to neutral
-
-        return rating, justification
-
-    except Exception as e:
-        print(f"  API call failed: {e}")
-        return None, str(e)
-
-
-def extract_topic_from_assembly(assembly: str) -> str:
-    """Extract topic description from assembly name."""
-    if 'scotland' in assembly.lower():
-        return "proposals for Scottish governance and policy"
-    elif 'gender' in assembly.lower() or 'gendereq' in assembly.lower():
-        return "gender equality and related social policies"
-    elif '8th' in assembly.lower() or 'amendment' in assembly.lower():
-        return "the 8th Amendment and reproductive rights in Ireland"
-    return "policy and governance matters"
-
-
 def run_calibration_experiment(
     base_dir: str,
     api_key: str,
@@ -588,7 +413,7 @@ def run_calibration_experiment(
 
         file_key = f"{utt.assembly}/{utt.file_name}"
         all_in_file = utterances_by_file[file_key]
-        topic = extract_topic_from_assembly(utt.assembly)
+        topic = extract_topic(utt.assembly)
 
         # Randomize condition order for this utterance
         conditions = CONTEXT_BUDGETS + ["20_utterances"]

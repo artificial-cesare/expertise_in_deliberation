@@ -7,29 +7,41 @@ __pycache__/
 !.env.template
 claude.md
 
-# Data stays local. Only the public transcripts (data/raw) and vocab (data/vocab)
-# are versioned. Scotland transcripts are UK Data Archive licensed: never commit them.
+# ---- Data: local only, except public sources the pipeline starts from ----
+# Tracked: data/vocab (UK Parliament hearings for the jargon lexicon),
+# the Irish and expert raw transcripts, and the checksums of the processed CSVs.
+# Scotland transcripts are UK Data Archive licensed: never commit them, or anything quoting them.
 data/*
-!data/raw/
 !data/vocab/
 !data/CHECKSUMS.sha256
-data/raw/scotland/
+!data/assemblies/
+data/assemblies/*
+!data/assemblies/raw/
+data/assemblies/raw/*
+!data/assemblies/raw/8th_amendment/
+!data/assemblies/raw/gendereq/
+!data/assemblies/raw/experts/
+data/assemblies/raw/**/*_debug_*
 
-# Annotation files and samples quote transcript text (incl. Scotland)
+# ---- Generated: outputs, models, logs ----
+outputs/
+models/
+results/
+logs/
+*_kmeans_global_pca/
+qwen3_expert_contrastive*/
+code/**/corpus_statistics/
+code/correlation_analysis/results*/
+
+# Never commit data or binaries from inside code/
+code/**/*.csv
+code/**/*.png
 code/validation/sampled_speeches.json
 code/validation/annotations_csv/
-code/**/*.csv
-
-# Outputs
-outputs/
-results/
-code/correlation_analysis/results*/
-corpus_statistics/
-
-# Model checkpoints and pickled data
 *.pth
 *.pt
 *.ckpt
 *.safetensors
 *.pkl
 *.npy
+*.parquet

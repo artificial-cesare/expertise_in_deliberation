@@ -16,9 +16,6 @@ DIMENSION="overall"
 
 ######## END CONFIG ########
 
-# Store the starting directory (thesis root)
-THESIS_ROOT="$(pwd)"
-
 # ---- sanity checks ----
 if [[ ! -d "$CODE_DIR" ]]; then
   echo "ERROR: CODE_DIR not found: $CODE_DIR" >&2
@@ -104,9 +101,6 @@ for csv in "${files[@]}"; do
   base="$(basename "$csv")"
   stem="${base%.csv}"
   
-  # Convert to absolute path
-  abs_csv="$THESIS_ROOT/$csv"
-  
   # Get relative path for display
   rel_path="${csv#$ASSEMBLIES_DIR/}"
   
@@ -114,7 +108,7 @@ for csv in "${files[@]}"; do
   echo "[$((processed + skipped + 1))/${#files[@]}] Processing: $rel_path"
   
   # Detect column name
-  col_name=$(detect_column "$abs_csv")
+  col_name=$(detect_column "$csv")
   if [[ "$col_name" == "__ERR__" ]]; then
     echo "  ⚠️  Skipping: no 'text' or 'comment' column found" >&2
     ((skipped++))
@@ -123,10 +117,10 @@ for csv in "${files[@]}"; do
   
   echo "  ✓ Detected column: '$col_name'"
   echo "  → Dimension: $DIMENSION | Batch: $BATCH_SIZE"
-  echo "  → Updating file in-place: $abs_csv"
+  echo "  → Updating file in-place: $csv"
   
   # Run the repo's simple inference script (outputs to same file)
-  if python inference_simple.py "$abs_csv" "$col_name" "$BATCH_SIZE" "$DIMENSION" "$abs_csv"; then
+  if python inference_simple.py "$csv" "$col_name" "$BATCH_SIZE" "$DIMENSION" "$csv"; then
     echo "  ✓ Successfully updated"
     ((processed++))
   else

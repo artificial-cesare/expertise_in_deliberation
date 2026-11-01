@@ -16,8 +16,8 @@ from pathlib import Path
 import pandas as pd
 from scipy.stats import kruskal
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "code" / "correlation_analysis"))
-from corr import ComprehensiveCorrelationAnalyzer  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paper_corr import ComprehensiveCorrelationAnalyzer  # noqa: E402
 
 WINDOWS = ("start", "middle", "end")
 ASSEMBLIES = ComprehensiveCorrelationAnalyzer(include_scotland="yes").assembly_topics

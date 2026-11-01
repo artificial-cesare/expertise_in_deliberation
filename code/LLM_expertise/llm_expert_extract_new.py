@@ -8,14 +8,13 @@ import os
 import csv
 import sys
 import argparse
-from pathlib import Path
-from openai import OpenAI
 from time import sleep
 from typing import List, Dict, Tuple
 
-# Import filter function
+sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'handcrafted_features'))
 from filter_function import is_substantive_speech_act
+from llm_utils import extract_topic, score_expertise_with_llm
 
 def load_csv_data(csv_path: str) -> Tuple[List[str], List[Dict]]:
     """
@@ -78,148 +77,6 @@ def get_context_window(rows: List[Dict], current_idx: int, window_size: int = 20
     
     return "\n".join(context_parts) if context_parts else "No previous context available."
 
-def extract_topic_from_path(csv_path: str) -> str:
-    """
-    Extract topic from file path or use folder name.
-    
-    Args:
-        csv_path: Path to CSV file
-    
-    Returns:
-        Topic description
-    """
-    # Try to infer from folder name
-    path_parts = Path(csv_path).parts
-    for part in reversed(path_parts):
-        if 'scotland' in part.lower():
-            return "proposals for Scottish governance and policy"
-        elif 'gender' in part.lower() or 'gendereq' in part.lower():
-            return "gender equality and related social policies"
-        elif '8th' in part.lower() or 'amendment' in part.lower():
-            return "the 8th Amendment and reproductive rights in Ireland"
-    
-    raise ValueError(f"Could not extract topic from path: {csv_path}")
-
-def score_expertise_with_llm(
-    contribution: str,
-    context: str,
-    topic: str,
-    api_key: str,
-    model: str = "gpt-4o-mini"
-) -> Tuple[int, str]:
-    """
-    Score expertise level of a contribution using LLM.
-    
-    Args:
-        contribution: The speech act to evaluate
-        context: Previous speech acts for context
-        topic: Topic of deliberation
-        api_key: OpenAI API key
-        model: Model to use
-    
-    Returns:
-        Tuple of (rating 1-5, justification string)
-    """
-    client = OpenAI(api_key=api_key)
-    
-    system_prompt = """You are a linguistic expert assisting a research study on deliberative communication. 
-Your task is to assess how much a given speech act demonstrates *domain expertise* on the topic under discussion. 
-Refer to previous context to assess how the current speech act signifies expertise in the current discussion topics.
-
-Definition:
-"Expertise" here refers to the expression of specialized knowledge, technical accuracy, 
-and the ability to reason with evidence or well-informed arguments, as shown through language use.
-
-Please evaluate one speaker’s statement in the context of an ongoing deliberation. 
-The input may include minor transcription errors (from speech-to-text). 
-
-When deciding, rely on well-established linguistic indicators of expertise, such as:
-- Use of **domain-specific or technical vocabulary** (precision, correct terminology);
-- **Structured reasoning and inferential coherence**, including explicit or implicit logical relations such as:  
-  - *Cause–effect:* because, since, therefore, thus, hence.  
-  - *Entailment or consequence:* it follows that, as a consequence, this implies that.  
-  - *Conditional inference / modus ponens:* if … then …, given that … we can conclude ….  
-  - *Syllogistic or categorical reasoning:* all X are Y; this is X; therefore …. 
-- **Evidence or citation markers** (according to, studies show, data suggest);
-- **Epistemic calibration** (balanced use of hedges like “may”, “might”, “suggests”, showing awareness of uncertainty);
-- **Syntactic and lexical complexity** (varied sentence structure, advanced word choice);
-- **Analytical focus over personal anecdote or emotion**.
-- **Relevance to current topic** (staying on-topic with informed contributions).
-
-Avoid judging based on fluency, confidence tone, or opinion alignment. 
-Focus purely on linguistic cues that signal expertise or informed reasoning.
-
-You must return a rating on a 1–5 Likert scale:
-
-1 — Strongly Disagree: clearly non-expert (uninformed, vague, anecdotal, incorrect, or purely emotional)
-2 — Disagree: likely non-expert (limited reasoning, lacks technical or evidential language)
-3 — Undecided: ambiguous or generic statement (no clear expert or non-expert cues)
-4 — Agree: likely expert (some specialized reasoning, accurate and structured)
-5 — Strongly Agree: clearly expert (precise terminology, well-reasoned, supported by evidence)
-
-Give a one-sentence justification referencing linguistic or reasoning cues.
-
-Format your answer exactly as:
-Rating: x/5. Justification: [One concise sentence].
-"""
-    
-    user_prompt = f"""Topic of deliberation: {topic}
-
-Here is the transcript of the deliberation from before the statement which is to be evaluated. This serves as the context for the evaluation:
-
-{context}
-
-Here is the statement which you have to evaluate:
-
-{contribution}
-
-Please evaluate whether the speaker demonstrates expertise on this topic."""
-    
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3,
-            max_tokens=150
-        )
-        
-        result = response.choices[0].message.content.strip()
-        
-        # Parse rating and justification
-        rating = None
-        justification = ""
-        
-        # Extract rating (look for "Rating: X/5" or just "X/5")
-        import re
-        rating_match = re.search(r'Rating:\s*(\d)/5', result, re.IGNORECASE)
-        if not rating_match:
-            rating_match = re.search(r'(\d)/5', result)
-        
-        if rating_match:
-            rating = int(rating_match.group(1))
-        
-        # Extract justification
-        just_match = re.search(r'Justification:\s*(.+)', result, re.IGNORECASE)
-        if just_match:
-            justification = just_match.group(1).strip()
-        else:
-            # If no explicit justification found, use the whole response
-            justification = result
-        
-        # Validate rating
-        if rating is None or rating < 1 or rating > 5:
-            print(f"  Warning: Invalid rating parsed from response: {result}")
-            rating = 3  # Default to neutral
-        
-        return rating, justification
-    
-    except Exception as e:
-        print(f"  API call failed: {str(e)}")
-        return None, str(e)
-
 def process_csv_file(
     csv_path: str,
     api_key: str,
@@ -262,7 +119,7 @@ def process_csv_file(
         headers.append('expertise_justification')
     
     # Extract topic
-    topic = extract_topic_from_path(csv_path)
+    topic = extract_topic(csv_path)
     print(f"  Topic: {topic}")
     print(f"  Total rows: {len(rows)}")
     print(f"  Content word threshold: {content_word_threshold}")
@@ -348,7 +205,7 @@ def main():
     )
     parser.add_argument(
         '--base-dir',
-        default='/home/u933585/thesis/data/assemblies/processed_files/',
+        default='data/assemblies/processed_files/',
         help='Base directory containing CSV folders'
     )
     parser.add_argument(

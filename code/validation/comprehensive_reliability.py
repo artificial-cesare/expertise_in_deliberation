@@ -1,4 +1,5 @@
 import json
+import argparse
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -7,38 +8,7 @@ from scipy.stats import mode
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-def load_sampled_speeches(json_path):
-    """Load the sampled speeches from JSON file."""
-    with open(json_path, 'r') as f:
-        data = json.load(f)
-    return data['speeches']
-
-def load_annotations(csv_dir):
-    """Load all annotation CSV files from directory."""
-    csv_dir = Path(csv_dir)
-    annotations = []
-    
-    for csv_file in csv_dir.glob('*.csv'):
-        df = pd.read_csv(csv_file)
-        annotations.append(df)
-    
-    return pd.concat(annotations, ignore_index=True)
-
-def prepare_ratings_matrix(speeches, annotations):
-    """Prepare a matrix of ratings for each speech."""
-    speech_ids = [speech['speech_id'] for speech in speeches]
-    raters = annotations['rater_id'].unique().tolist()
-    raters.append('llm')
-    
-    ratings_matrix = pd.DataFrame(index=speech_ids, columns=raters, dtype=float)
-    
-    for _, row in annotations.iterrows():
-        ratings_matrix.loc[row['item_id'], row['rater_id']] = float(row['score'])
-    
-    for speech in speeches:
-        ratings_matrix.loc[speech['speech_id'], 'llm'] = float(speech['expertise_score'])
-    
-    return ratings_matrix
+from io_utils import load_sampled_speeches, load_annotations, prepare_ratings_matrix
 
 def calculate_raw_agreement(y1, y2):
     """Calculate percentage of identical labels."""
@@ -248,12 +218,22 @@ def diagnose_label_imbalance(ratings_matrix):
     }
 
 def main():
-    # Paths
-    json_path = 'code/validation/sampled_speeches.json'
-    csv_dir = 'code/validation/annotations_csv'
-    output_path = 'code/validation/comprehensive_reliability_results.json'
-    plots_dir = 'code/validation/confusion_matrices'
-    
+    parser = argparse.ArgumentParser(description="Comprehensive inter-rater reliability analysis")
+    parser.add_argument('--json-path', default='data/validation/sampled_speeches.json',
+                        help='Path to sampled speeches JSON')
+    parser.add_argument('--csv-dir', default='data/validation/annotations_csv',
+                        help='Directory containing annotation CSV files')
+    parser.add_argument('--output', default='code/validation/comprehensive_reliability_results.json',
+                        help='Output JSON file path')
+    parser.add_argument('--plots-dir', default='outputs/validation/confusion_matrices',
+                        help='Output directory for confusion matrix PNGs')
+    args = parser.parse_args()
+
+    json_path = args.json_path
+    csv_dir = args.csv_dir
+    output_path = args.output
+    plots_dir = args.plots_dir
+
     # Load data
     print("Loading data...")
     speeches = load_sampled_speeches(json_path)

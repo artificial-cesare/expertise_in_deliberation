@@ -5,12 +5,17 @@ Sample speech acts with context from Citizens' Assemblies and expert transcripts
 Stratified by: group, topic, and expertise_llm_score.
 """
 
+import sys
 import json
 import csv
 import random
+import argparse
 from pathlib import Path
 from typing import Dict, List
 from collections import defaultdict
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from shared.topic_maps import ASSEMBLY_TOPICS as ASSEMBLIES_TOPICS, EXPERT_TOPICS as EXPERTS_TOPICS
 
 # ============================================================================
 # Configuration
@@ -22,19 +27,8 @@ CONTEXT_WINDOW = 20
 ASSEMBLIES_DIR = Path("data/assemblies/processed_files")
 EXPERTS_DIR = Path("data/assemblies/processed_files/experts")
 
-ASSEMBLIES_TOPICS = {
-    "8th_amendment": "constitutional reform",
-    "gendereq": "gender equality",
-    "scotland": "public policy"
-}
 
-EXPERTS_TOPICS = {
-    "constitution": "constitutional reform",
-    "gender": "gender equality",
-    "future": "public policy"
-}
-
-OUTPUT_FILE = Path("code/validation/sampled_speeches.json")
+OUTPUT_FILE = Path("data/validation/sampled_speeches.json")
 
 # ============================================================================
 # Helper Functions
@@ -146,11 +140,18 @@ def stratified_sample(speeches: List[Dict], n: int, seed: int) -> List[Dict]:
 # Main
 # ============================================================================
 def main():
+    parser = argparse.ArgumentParser(description="Sample speeches with context for annotation")
+    parser.add_argument("--data-dir", type=Path, default=ASSEMBLIES_DIR,
+                        help="Processed files directory (experts read from its experts/ subdir)")
+    parser.add_argument("--output", type=Path, default=OUTPUT_FILE,
+                        help="Output JSON file path")
+    args = parser.parse_args()
+
     print(f"Sampling {SAMPLE_SIZE} speeches (seed={SEED}, context={CONTEXT_WINDOW})\n")
-    
+
     # Load all speeches
-    assemblies = load_speeches(ASSEMBLIES_DIR, ASSEMBLIES_TOPICS, "assemblies")
-    experts = load_speeches(EXPERTS_DIR, EXPERTS_TOPICS, "experts")
+    assemblies = load_speeches(args.data_dir, ASSEMBLIES_TOPICS, "assemblies")
+    experts = load_speeches(args.data_dir / "experts", EXPERTS_TOPICS, "experts")
     all_speeches = assemblies + experts
     
     print(f"Total valid speeches: {len(all_speeches)}")
@@ -180,11 +181,11 @@ def main():
         'speeches': sampled
     }
     
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n✅ Saved to {OUTPUT_FILE}")
+
+    print(f"\n✅ Saved to {args.output}")
 
 if __name__ == "__main__":
     main()

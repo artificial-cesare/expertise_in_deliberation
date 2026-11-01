@@ -1,0 +1,95 @@
+================================================================================
+CITIZENS' ASSEMBLY DATASET SUMMARIES
+================================================================================
+
+================================================================================
+CONSTITUTIONAL REFORM ASSEMBLY
+================================================================================
+
+Files analyzed: 2
+
+DATASET CHARACTERISTICS:
+  • Total speeches: 386
+  • Total tokens: 46,477
+  • Total characters: 251,563
+  • Average speech length: 475.8 words (σ=513.3)
+  • Median speech length: 475.8 words
+
+LINGUISTIC FEATURES:
+  • Domain specificity (jargon density): 0.0331
+    Range: 0.0307 - 0.0355
+  • Lexical sophistication: 0.98
+    Range: 0.97 - 0.98
+  • Syntactic complexity: 13.87
+    Range: 13.10 - 14.64
+  • Hedge ratio (hedges vs boosters): 0.77
+    Range: 0.77 - 0.78
+  • Reasoning markers (per 100 tokens): 1.14
+    Range: 0.84 - 1.44
+  • Evidential markers (per 100 tokens): 0.00
+    Range: 0.00 - 0.01
+
+BRIEF DESCRIPTION:
+The Constitutional Reform assembly dataset comprises 386 speeches totaling approximately 46K tokens. Participants contributed extensive speeches (avg 476 words), characterized by moderate use of domain-specific terminology, accessible vocabulary, and moderately complex sentence structures. 
+
+================================================================================
+GENDER EQUALITY ASSEMBLY
+================================================================================
+
+Files analyzed: 4
+
+DATASET CHARACTERISTICS:
+  • Total speeches: 138
+  • Total tokens: 11,682
+  • Total characters: 65,069
+  • Average speech length: 116.4 words (σ=68.0)
+  • Median speech length: 121.0 words
+
+LINGUISTIC FEATURES:
+  • Domain specificity (jargon density): 0.0478
+    Range: 0.0262 - 0.0819
+  • Lexical sophistication: 0.97
+    Range: 0.90 - 1.01
+  • Syntactic complexity: 13.27
+    Range: 10.08 - 15.60
+  • Hedge ratio (hedges vs boosters): 0.79
+    Range: 0.54 - 0.93
+  • Reasoning markers (per 100 tokens): 1.04
+    Range: 0.08 - 1.49
+  • Evidential markers (per 100 tokens): 0.00
+    Range: 0.00 - 0.00
+
+BRIEF DESCRIPTION:
+The Gender Equality assembly dataset comprises 138 speeches totaling approximately 12K tokens. Participants contributed concise speeches (avg 116 words), characterized by substantial domain-specific terminology, accessible vocabulary, and moderately complex sentence structures. 
+
+================================================================================
+PUBLIC POLICY ASSEMBLY
+================================================================================
+
+Files analyzed: 34
+
+DATASET CHARACTERISTICS:
+  • Total speeches: 8,610
+  • Total tokens: 198,467
+  • Total characters: 1,084,609
+  • Average speech length: 25.2 words (σ=10.9)
+  • Median speech length: 22.3 words
+
+LINGUISTIC FEATURES:
+  • Domain specificity (jargon density): 0.0349
+    Range: 0.0161 - 0.0549
+  • Lexical sophistication: 0.90
+    Range: 0.83 - 1.03
+  • Syntactic complexity: 12.09
+    Range: 9.92 - 14.84
+  • Hedge ratio (hedges vs boosters): 0.76
+    Range: 0.59 - 0.92
+  • Reasoning markers (per 100 tokens): 2.15
+    Range: 1.31 - 3.21
+  • Evidential markers (per 100 tokens): 0.00
+    Range: 0.00 - 0.04
+
+BRIEF DESCRIPTION:
+The Public Policy assembly dataset comprises 8,610 speeches totaling approximately 198K tokens. Participants contributed very brief speeches (avg 25 words), characterized by moderate use of domain-specific terminology, accessible vocabulary, and moderately complex sentence structures. The discourse shows strong use of causal reasoning markers. 
+
+================================================================================

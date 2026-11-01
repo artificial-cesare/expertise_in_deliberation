@@ -1,0 +1,216 @@
+================================================================================
+K-MEANS CONFIGURATION COMPARISON
+================================================================================
+
+CONFIGURATIONS TESTED:
+1. base + experts_only
+2. base + experts_and_assemblies
+3. finetuned + experts_only
+4. finetuned + experts_and_assemblies
+
+SELECTION CRITERION: Global expert classification accuracy
+TIE-BREAKING: Average per-topic silhouette score
+
+================================================================================
+CONFIGURATION COMPARISON
+================================================================================
+
+BASE_EXPERTS_AND_ASSEMBLIES ← BEST BASE
+  Global expert classification accuracy: 89.3%
+  Average per-topic silhouette: 0.0896
+  Best k: {'constitution': 3, 'future': 4, 'gender': 3}
+  Per-topic accuracy: constitution=93.9%, future=90.4%, gender=82.7%
+
+BASE_EXPERTS_ONLY
+  Global expert classification accuracy: 88.9%
+  Average per-topic silhouette: 0.0814
+  Best k: {'constitution': 3, 'future': 3, 'gender': 3}
+  Per-topic accuracy: constitution=95.5%, future=88.4%, gender=82.1%
+
+FINETUNED_EXPERTS_AND_ASSEMBLIES ← BEST FINETUNED
+  Global expert classification accuracy: 98.2%
+  Average per-topic silhouette: 0.1205
+  Best k: {'constitution': 3, 'future': 4, 'gender': 3}
+  Per-topic accuracy: constitution=98.9%, future=97.7%, gender=98.0%
+
+FINETUNED_EXPERTS_ONLY
+  Global expert classification accuracy: 98.2%
+  Average per-topic silhouette: 0.1169
+  Best k: {'constitution': 3, 'future': 4, 'gender': 3}
+  Per-topic accuracy: constitution=98.9%, future=97.7%, gender=98.0%
+
+================================================================================
+SELECTED: BASE_EXPERTS_AND_ASSEMBLIES (BASE)
+SELECTED: FINETUNED_EXPERTS_AND_ASSEMBLIES (FINETUNED)
+================================================================================
+
+================================================================================
+DETAILED RESULTS: BEST BASE
+================================================================================
+
+Configuration: base + experts_and_assemblies
+Best k combination: {'constitution': 3, 'future': 4, 'gender': 3}
+
+GLOBAL EXPERT METRICS:
+  Classification accuracy: 89.3%
+  Average per-topic silhouette: 0.0896
+  Total experts: 1,667
+  Total clusters: 10
+
+PER-TOPIC EXPERT METRICS:
+
+  CONSTITUTION:
+    Best k: 3
+    Classification accuracy: 93.9%
+    Within-topic silhouette: 0.0567
+    Expert cluster sizes:
+      Cluster 0: 233 (41.8%)
+      Cluster 1: 197 (35.3%)
+      Cluster 2: 128 (22.9%)
+    Assembly metrics:
+      Samples: 459
+      Avg distance: 0.6844
+      Avg entropy: 2.3009
+      Avg confidence: 0.0007
+
+  FUTURE:
+    Best k: 4
+    Classification accuracy: 90.4%
+    Within-topic silhouette: 0.0865
+    Expert cluster sizes:
+      Cluster 0: 164 (26.8%)
+      Cluster 1: 80 (13.1%)
+      Cluster 2: 152 (24.8%)
+      Cluster 3: 216 (35.3%)
+    Assembly metrics:
+      Samples: 3,034
+      Avg distance: 0.7259
+      Avg entropy: 2.3014
+      Avg confidence: 0.0005
+
+  GENDER:
+    Best k: 3
+    Classification accuracy: 82.7%
+    Within-topic silhouette: 0.1255
+    Expert cluster sizes:
+      Cluster 0: 146 (29.4%)
+      Cluster 1: 238 (47.9%)
+      Cluster 2: 113 (22.7%)
+    Assembly metrics:
+      Samples: 114
+      Avg distance: 0.7129
+      Avg entropy: 2.3011
+      Avg confidence: 0.0007
+
+================================================================================
+ASSEMBLY CROSS-TOPIC ASSIGNMENT
+================================================================================
+
+Constitutional Reform (Topic: CONSTITUTION):
+  Total: 459
+  Correct topic: 300 (65.4%)
+  Misassigned to:
+    future: 65 (14.2%)
+    gender: 94 (20.5%)
+
+Public Policy (Topic: FUTURE):
+  Total: 3,034
+  Correct topic: 1,644 (54.2%)
+  Misassigned to:
+    constitution: 1,107 (36.5%)
+    gender: 283 (9.3%)
+
+Gender Equality (Topic: GENDER):
+  Total: 114
+  Correct topic: 35 (30.7%)
+  Misassigned to:
+    constitution: 61 (53.5%)
+    future: 18 (15.8%)
+
+Overall assembly cross-topic accuracy: 1,979/3,607 (54.9%)
+
+================================================================================
+DETAILED RESULTS: BEST FINETUNED
+================================================================================
+
+Configuration: finetuned + experts_and_assemblies
+Best k combination: {'constitution': 3, 'future': 4, 'gender': 3}
+
+GLOBAL EXPERT METRICS:
+  Classification accuracy: 98.2%
+  Average per-topic silhouette: 0.1205
+  Total experts: 1,667
+  Total clusters: 10
+
+PER-TOPIC EXPERT METRICS:
+
+  CONSTITUTION:
+    Best k: 3
+    Classification accuracy: 98.9%
+    Within-topic silhouette: 0.1269
+    Expert cluster sizes:
+      Cluster 0: 110 (19.7%)
+      Cluster 1: 206 (36.9%)
+      Cluster 2: 242 (43.4%)
+    Assembly metrics:
+      Samples: 459
+      Avg distance: 0.5054
+      Avg entropy: 2.2778
+      Avg confidence: 0.0108
+
+  FUTURE:
+    Best k: 4
+    Classification accuracy: 97.7%
+    Within-topic silhouette: 0.0828
+    Expert cluster sizes:
+      Cluster 0: 246 (40.2%)
+      Cluster 1: 131 (21.4%)
+      Cluster 2: 113 (18.5%)
+      Cluster 3: 122 (19.9%)
+    Assembly metrics:
+      Samples: 3,034
+      Avg distance: 0.5644
+      Avg entropy: 2.2856
+      Avg confidence: 0.0074
+
+  GENDER:
+    Best k: 3
+    Classification accuracy: 98.0%
+    Within-topic silhouette: 0.1517
+    Expert cluster sizes:
+      Cluster 0: 237 (47.7%)
+      Cluster 1: 147 (29.6%)
+      Cluster 2: 113 (22.7%)
+    Assembly metrics:
+      Samples: 114
+      Avg distance: 0.6917
+      Avg entropy: 2.2810
+      Avg confidence: 0.0094
+
+================================================================================
+ASSEMBLY CROSS-TOPIC ASSIGNMENT
+================================================================================
+
+Constitutional Reform (Topic: CONSTITUTION):
+  Total: 459
+  Correct topic: 298 (64.9%)
+  Misassigned to:
+    future: 50 (10.9%)
+    gender: 111 (24.2%)
+
+Public Policy (Topic: FUTURE):
+  Total: 3,034
+  Correct topic: 1,350 (44.5%)
+  Misassigned to:
+    constitution: 1,056 (34.8%)
+    gender: 628 (20.7%)
+
+Gender Equality (Topic: GENDER):
+  Total: 114
+  Correct topic: 30 (26.3%)
+  Misassigned to:
+    constitution: 60 (52.6%)
+    future: 24 (21.1%)
+
+Overall assembly cross-topic accuracy: 1,678/3,607 (46.5%)
+

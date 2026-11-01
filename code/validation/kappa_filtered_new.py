@@ -13,43 +13,7 @@ EXCLUDED_SPEECHES = {
     'experts/constitution/committees.parliament.uk_speeches.csv/row_0'
 }
 
-def load_sampled_speeches(json_path):
-    """Load the sampled speeches from JSON file."""
-    with open(json_path, 'r') as f:
-        data = json.load(f)
-    return data['speeches']
-
-def load_annotations(csv_dir):
-    """Load all annotation CSV files from directory."""
-    csv_dir = Path(csv_dir)
-    annotations = []
-    
-    for csv_file in csv_dir.glob('*.csv'):
-        df = pd.read_csv(csv_file)
-        annotations.append(df)
-    
-    return pd.concat(annotations, ignore_index=True)
-
-def prepare_ratings_matrix(speeches, annotations):
-    """Prepare a matrix of ratings for each speech."""
-    speech_ids = [speech['speech_id'] for speech in speeches]
-    raters = annotations['rater_id'].unique().tolist()
-    raters.append('llm')
-    
-    ratings_matrix = pd.DataFrame(index=speech_ids, columns=raters, dtype=float)
-    
-    for _, row in annotations.iterrows():
-        ratings_matrix.loc[row['item_id'], row['rater_id']] = float(row['score'])
-    
-    for speech in speeches:
-        ratings_matrix.loc[speech['speech_id'], 'llm'] = float(speech['expertise_score'])
-    
-    # ========================================================================
-    # ✅ FILTER: Remove excluded speeches
-    # ========================================================================
-    ratings_matrix = ratings_matrix[~ratings_matrix.index.isin(EXCLUDED_SPEECHES)]
-    
-    return ratings_matrix
+from io_utils import load_sampled_speeches, load_annotations, prepare_ratings_matrix
 
 def filter_extreme_scores(ratings_matrix):
     """
@@ -108,13 +72,13 @@ def main():
     parser.add_argument(
         '--json-path',
         type=str,
-        default='code/validation/sampled_speeches.json',
+        default='data/validation/sampled_speeches.json',
         help='Path to sampled speeches JSON'
     )
     parser.add_argument(
         '--csv-dir',
         type=str,
-        default='code/validation/annotations_csv',
+        default='data/validation/annotations_csv',
         help='Directory containing annotation CSV files'
     )
     parser.add_argument(
@@ -146,7 +110,8 @@ def main():
     # Prepare full ratings matrix (with exclusions)
     print("\nPreparing ratings matrix (after exclusions)...")
     full_matrix = prepare_ratings_matrix(speeches, annotations)
-    
+    full_matrix = full_matrix[~full_matrix.index.isin(EXCLUDED_SPEECHES)]
+
     print(f"Total speeches (after exclusions): {len(full_matrix)}")
     
     # ========================================================================

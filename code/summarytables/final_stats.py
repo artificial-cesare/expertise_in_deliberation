@@ -12,8 +12,9 @@ from typing import Dict, List, Tuple
 from datetime import datetime
 import sys
 
-# Add path for filter function
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.append(str(Path(__file__).parent.parent / "handcrafted_features"))
+from shared.topic_maps import ASSEMBLY_TOPICS as ASSEMBLY_TOPIC_MAP, EXPERT_TOPICS as EXPERT_TOPIC_MAP
 try:
     from filter_function import is_substantive_speech_act
 except ImportError:
@@ -25,22 +26,11 @@ except ImportError:
 # Configuration
 # ============================================================================
 
-ASSEMBLIES_DIR = Path("data/assemblies/processed_files")
-EXPERTS_DIR = Path("data/assemblies/processed_files/experts")
-OUTPUT_DIR = Path("corpus_statistics")
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+ASSEMBLIES_DIR = _PROJECT_ROOT / "data/assemblies/processed_files"
+EXPERTS_DIR = _PROJECT_ROOT / "data/assemblies/processed_files/experts"
+OUTPUT_DIR = _PROJECT_ROOT / "outputs/corpus_statistics"
 
-# Topic mappings
-ASSEMBLY_TOPIC_MAP = {
-    "8th_amendment": "Constitutional Reform",
-    "gendereq": "Gender Equality",
-    "scotland": "Public Policy"
-}
-
-EXPERT_TOPIC_MAP = {
-    "constitution": "Constitutional Reform",
-    "future": "Public Policy",
-    "gender": "Gender Equality"
-}
 
 # Features to extract
 FEATURES = [

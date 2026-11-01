@@ -4,6 +4,38 @@
 Filter function to identify substantive speech acts based on content word count.
 """
 
+def count_content_words(text: str) -> int:
+    """
+    Count content words (non-function words) in text.
+
+    Uses a fixed set of common English function words.  Punctuation attached to
+    tokens is not stripped, so 'word.' counts as a content word — consistent
+    with how the column num_non_function_words is computed elsewhere.
+
+    Args:
+        text: Raw text string.
+
+    Returns:
+        Number of content words.
+    """
+    function_words = {
+        'a', 'an', 'the', 'and', 'or', 'but', 'if', 'because', 'as', 'until',
+        'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between',
+        'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to',
+        'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again',
+        'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how',
+        'all', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such',
+        'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
+        's', 't', 'can', 'will', 'just', 'don', 'should', 'now', 'i', 'you',
+        'he', 'she', 'it', 'we', 'they', 'them', 'their', 'what', 'which', 'who',
+        'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has',
+        'had', 'do', 'does', 'did', 'would', 'could', 'should', 'may', 'might',
+        'must', 'shall',
+    }
+    words = text.lower().split()
+    return sum(1 for w in words if w and w not in function_words)
+
+
 def is_substantive_speech_act(num_non_function_words: int, threshold: int = 5) -> bool:
     """
     Determine if a speech act is substantive based on non-function word count.

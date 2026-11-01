@@ -470,8 +470,6 @@ def extract_domain_jargon(topic_dir: Path) -> List[Dict]:
     
     return term_data
 
-# ...existing code...
-
 def format_output(topic_name: str, term_data: List[Dict]) -> List[Dict]:
     """Format and print results with dynamic allocation."""
     if not term_data:
@@ -519,8 +517,6 @@ def format_output(topic_name: str, term_data: List[Dict]) -> List[Dict]:
         print(f"   ... and {len(selected) - 20} more")
     
     return selected
-
-# ...existing code...
 
 def build_domain_vocabulary(vocab_dir: Path, output_file: Path) -> None:
     """Build vocabulary JSON."""

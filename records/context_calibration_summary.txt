@@ -1,0 +1,58 @@
+================================================================================
+CONTEXT SIZE CALIBRATION: SUMMARY REPORT
+================================================================================
+
+SAMPLE
+--------------------------------------------------------------------------------
+Total utterances sampled: 199
+Assemblies: scotland, gendereq, 8th_amendment
+  - 8th_amendment: 25 utterances
+  - gendereq: 6 utterances
+  - scotland: 168 utterances
+
+SCORE RELIABILITY (ICC)
+--------------------------------------------------------------------------------
+ICC(2,1) across all context conditions: 0.803
+95% CI: [0.730, 0.850]
+Interpretation: Excellent reliability - scores are highly consistent across context sizes
+
+SYSTEMATIC BIAS TEST (Friedman)
+--------------------------------------------------------------------------------
+Friedman χ² = 174.95, p = 0.0000
+Interpretation: SIGNIFICANT systematic effect - mean scores differ across conditions
+
+MEAN SCORES BY CONDITION
+--------------------------------------------------------------------------------
+  0              : 1.915
+  100            : 2.181
+  1000           : 2.367
+  20_utterances  : 2.312
+  500            : 2.332
+
+PAIRWISE SPEARMAN CORRELATIONS
+--------------------------------------------------------------------------------
+Correlations with 20-utterance baseline:
+  1000           : ρ = 0.910
+  500            : ρ = 0.889
+  100            : ρ = 0.833
+  0              : ρ = 0.717
+
+Minimum pairwise correlation: 0.717
+
+CONTEXT SENSITIVITY BY UTTERANCE LENGTH
+--------------------------------------------------------------------------------
+Correlation (length vs. score range): r = -0.010, p = 0.8841
+Interpretation: No significant relationship between length and context sensitivity
+
+HIGHLY CONTEXT-SENSITIVE UTTERANCES
+--------------------------------------------------------------------------------
+Utterances with MAD >= 1.0: 0 (0.0%)
+
+RECOMMENDATION
+--------------------------------------------------------------------------------
+✓ High reliability (ICC >= 0.80)
+⚠ Systematic bias detected - investigate mean score trends
+
+RECOMMENDED: Choose budget based on mean score stability
+
+================================================================================

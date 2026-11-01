@@ -1,6 +1,6 @@
 """Rebuild the correlation heatmaps (Figs 3-4, Appendix B) and temporal plots (Appendix C).
 
-Uses the thesis-era ComprehensiveCorrelationAnalyzer (code/correlation_analysis/corr.py) with
+Uses the thesis-era ComprehensiveCorrelationAnalyzer (reproduce/paper_corr.py) with
 the paper's settings: assemblies only, all three assemblies, >5 content words, global z-score.
 
 --scotland-llm drop   reproduces the published figures. They were made before Scotland had
@@ -18,8 +18,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "code" / "correlation_analysis"))
-from corr import ComprehensiveCorrelationAnalyzer  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paper_corr import ComprehensiveCorrelationAnalyzer  # noqa: E402
 
 LLM = "Expertise Llm Score"
 
