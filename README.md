@@ -30,7 +30,7 @@ expertise_in_deliberation/
 ├── tests/                     # toy checks for reproduce/ (tracked)
 ├── records/                   # small text records of runs that need a GPU or the API (tracked)
 ├── data/                      # local only, except the public sources listed below
-├── models/                    # fine-tuned Qwen3 checkpoints (local only, ~8 GB)
+├── models/                    # fine-tuned Qwen3 model, best epoch only (local only, ~1 GB)
 ├── outputs/                   # everything the scripts generate (local only)
 ├── llm_exp_requirements.txt   # CPU / OpenAI environment
 └── qwen3_requirements.txt     # GPU / embedding environment
@@ -111,9 +111,11 @@ The features in the CSVs were computed by `code/handcrafted_features/new_feats_e
 
 ### Points to know before reusing the numbers
 
-- **The published correlation figures leave out Scotland's LLM scores.** They were made before
-  Scotland was scored, so every LLM-score cell uses the two Irish assemblies only (n = 537), while
-  all other cells use all three (n = 3,183). `--scotland-llm drop` reproduces the figures;
+- **The published correlation figures leave out Scotland's LLM scores.** All 17 values in the
+  LLM-score row of Fig 3 match a run where Scotland's scores are missing, so those cells use the two
+  Irish assemblies only (n = 537), while all other cells use all three (n = 3,183). Scotland's CSVs
+  do contain LLM scores now (scored for all three assemblies on 2025-10-31, `outputs/logs/`), so the
+  figure was most likely made from an earlier copy of the CSVs. `--scotland-llm drop` reproduces the figures;
   `keep` uses all three (for example, LLM score vs. normalised length goes from r = .51 to .32;
   vs. ArgQA it stays at .67–.68).
 - **Thresholds differ between analyses.** Tables use ≥ 5 content words (3,607 utterances),
