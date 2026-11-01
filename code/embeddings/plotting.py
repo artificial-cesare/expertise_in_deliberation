@@ -18,6 +18,12 @@ from sentence_transformers import SentenceTransformer
 import sys
 import umap  # pip install umap-learn
 import joblib 
+import os
+
+# Defaults are the GPU server layout; override with env vars to run elsewhere (see reproduce/umap_figures_v2.sh)
+THESIS_ROOT = Path(os.getenv("THESIS_ROOT", "/home/u933585/thesis"))
+DEVICE = os.getenv("DEVICE", "cuda:0")
+PLOT_LIMITS = [x == "True" for x in os.getenv("PLOT_LIMITS", "True,False").split(",")]
 import warnings
 
 # Add path for custom modules
@@ -38,8 +44,8 @@ class Config:
         self.limit_samples = limit_samples
         
         # Paths
-        self.base_data_dir = Path("/home/u933585/thesis/data/assemblies/processed_files/")
-        self.output_root = Path(f"/home/u933585/thesis/{self.model_type}_kmeans_global_pca/")
+        self.base_data_dir = THESIS_ROOT / "data/assemblies/processed_files"
+        self.output_root = THESIS_ROOT / f"{self.model_type}_kmeans_global_pca"
         self.models_dir = self.output_root / "models"
         self.plots_dir = self.output_root / f"plots_visual_update_limit{self.limit_samples}"
         
@@ -47,11 +53,11 @@ class Config:
         
         # Models
         if self.model_type == "finetuned":
-            self.emb_model_path = "/home/u933585/thesis/qwen3_expert_contrastive_final/best_model/"
+            self.emb_model_path = str(THESIS_ROOT / "qwen3_expert_contrastive_final/best_model")
         else:
             self.emb_model_path = "Qwen/Qwen3-Embedding-0.6B"
             
-        self.device = "cuda:0"
+        self.device = DEVICE
         self.batch_size = 16
         self.random_seed = 42
         self.content_word_threshold = 5
@@ -298,13 +304,13 @@ def generate_plots(
 # Main Execution
 # ============================================================================
 def main():
-    device = setup_device("cuda:0")
+    device = setup_device(DEVICE)
     
     # We need to load data and embed it to have points to plot
     # We do this once per model type (Base vs Finetuned)
     
     for m_type in ['base', 'finetuned']:
-        for limit_samples in [True, False]:
+        for limit_samples in PLOT_LIMITS:
             print(f"Preparing data for model type: {m_type}, limit_samples: {limit_samples}")
             config = Config(model_type=m_type, limit_samples=limit_samples)
             print(f"\n{'='*60}\nPROCESSING: {m_type.upper()} (LIMIT={limit_samples})\n{'='*60}")
