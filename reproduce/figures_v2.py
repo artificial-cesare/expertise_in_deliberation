@@ -11,7 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paper_corr import ComprehensiveCorrelationAnalyzer
 from paper_v2_stats import load
 
-D = load(); S = D[D.num_non_function_words >= 5].reset_index(drop=True)
+# The paper's 14 features plus the four scores. The CSVs also hold experimental columns (new_*, mrc_*, row
+# indices, the v1 copies) that the published figures never showed, so select explicitly.
+PAPER_COLS = ["jargon_density", "lexical_sophistication", "syntactic_complexity", "reasoning_markers",
+              "evidential_markers", "length_tokens", "num_non_function_words", "hedge_density", "booster_density",
+              "epistemic_balance", "specificity_length_norm", "specificity_mean_word_len_norm",
+              "specificity_numbers_norm", "specificity_content_prop", "overall_score",
+              "distance_base", "similarity_base", "distance_finetuned", "similarity_finetuned", "expertise_llm_score"]
+D = load(); S = D.loc[D.num_non_function_words >= 5, PAPER_COLS].reset_index(drop=True)
 a = ComprehensiveCorrelationAnalyzer(norm_type="global", scaler_type="zscore", include_scotland="yes")
 for model in ("base", "finetuned"):
     out = Path("outputs/paper_v2/correlations") / model; out.mkdir(parents=True, exist_ok=True)
