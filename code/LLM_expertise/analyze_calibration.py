@@ -22,7 +22,7 @@ sns.set_palette("husl")
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-BUDGET_ORDER: List[Union[int, str]] = [0, 500, 1000, 1500, 2000, "20_utterances"]
+BUDGET_ORDER: List[Union[int, str]] = [0, 100, 500, 1000, 1500, 2000, "20_utterances"]
 TOKEN_BUDGETS: List[int] = [0, 500, 1000, 1500, 2000]
 CI95_Z: float = 1.96           # z-score for 95% confidence interval
 ALPHA: float = 0.05            # significance threshold
@@ -428,10 +428,15 @@ def plot_actual_tokens_distribution(df: pd.DataFrame, output_dir: Path) -> None:
         df: Results dataframe
         output_dir: Directory to save plot
     """
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-    axes = axes.flatten()
+    present = [b for b in BUDGET_ORDER if (df['budget_condition'] == b).any()]
+    ncols = 3
+    nrows = max(1, -(-len(present) // ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(15, 5 * nrows))
+    axes = np.atleast_1d(axes).flatten()
+    for ax in axes[len(present):]:
+        ax.set_visible(False)
 
-    for i, budget in enumerate(BUDGET_ORDER):
+    for i, budget in enumerate(present):
         ax = axes[i]
         subset = df[df['budget_condition'] == budget]
         ax.hist(

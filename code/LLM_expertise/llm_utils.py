@@ -29,30 +29,52 @@ def count_tokens(text: str, encoding) -> int:
         return int(len(text.split()) * 1.3)  # Rough estimate
 
 
-def score_expertise_with_llm(
-    contribution: str,
-    context: str,
-    topic: str,
-    api_key: str,
-    model: str = "gpt-4o-mini",
-) -> Tuple[Optional[int], str]:
-    """
-    Score expertise level of a contribution using an LLM.
+# System prompts. "paper" is the prompt in the paper's Appendix A, which produced every published
+# expertise_llm_score (git 3958e1e, run of 2025-10-31). "lived_experience" is a later revision that
+# also credits lived experience; it was used by an earlier calibration run and must not be mixed with
+# the published scores.
+SYSTEM_PROMPTS = {
+    "paper": """You are a linguistic expert assisting a research study on deliberative communication. 
+Your task is to assess how much a given speech act demonstrates *domain expertise* on the topic under discussion. 
+Refer to previous context to assess how the current speech act signifies expertise in the current discussion topics.
 
-    Args:
-        contribution: The speech act to evaluate.
-        context: Previous speech acts for context.
-        topic: Topic of deliberation.
-        api_key: OpenAI API key.
-        model: Model to use.
+Definition:
+"Expertise" here refers to the expression of specialized knowledge, technical accuracy, 
+and the ability to reason with evidence or well-informed arguments, as shown through language use.
 
-    Returns:
-        Tuple of (rating 1-5, justification string).
-        Rating is None if the API call failed.
-    """
-    client = OpenAI(api_key=api_key)
+Please evaluate one speaker’s statement in the context of an ongoing deliberation. 
+The input may include minor transcription errors (from speech-to-text). 
 
-    system_prompt = """You are a political innovations expert assisting a research study on deliberative communication.
+When deciding, rely on well-established linguistic indicators of expertise, such as:
+- Use of **domain-specific or technical vocabulary** (precision, correct terminology);
+- **Structured reasoning and inferential coherence**, including explicit or implicit logical relations such as:  
+  - *Cause–effect:* because, since, therefore, thus, hence.  
+  - *Entailment or consequence:* it follows that, as a consequence, this implies that.  
+  - *Conditional inference / modus ponens:* if … then …, given that … we can conclude ….  
+  - *Syllogistic or categorical reasoning:* all X are Y; this is X; therefore …. 
+- **Evidence or citation markers** (according to, studies show, data suggest);
+- **Epistemic calibration** (balanced use of hedges like “may”, “might”, “suggests”, showing awareness of uncertainty);
+- **Syntactic and lexical complexity** (varied sentence structure, advanced word choice);
+- **Analytical focus over personal anecdote or emotion**.
+- **Relevance to current topic** (staying on-topic with informed contributions).
+
+Avoid judging based on fluency, confidence tone, or opinion alignment. 
+Focus purely on linguistic cues that signal expertise or informed reasoning.
+
+You must return a rating on a 1–5 Likert scale:
+
+1 — Strongly Disagree: clearly non-expert (uninformed, vague, anecdotal, incorrect, or purely emotional)
+2 — Disagree: likely non-expert (limited reasoning, lacks technical or evidential language)
+3 — Undecided: ambiguous or generic statement (no clear expert or non-expert cues)
+4 — Agree: likely expert (some specialized reasoning, accurate and structured)
+5 — Strongly Agree: clearly expert (precise terminology, well-reasoned, supported by evidence)
+
+Give a one-sentence justification referencing linguistic or reasoning cues.
+
+Format your answer exactly as:
+Rating: x/5. Justification: [One concise sentence].
+""",
+    "lived_experience": """You are a political innovations expert assisting a research study on deliberative communication.
 Your task is to assess how much a given speech act demonstrates domain expertise on the topic under discussion.
 Refer to previous context to assess how the current speech act signifies expertise in the current discussion topics.
 
@@ -106,7 +128,36 @@ You must return a rating on a 1–5 Likert scale:
 Give a one-sentence justification referencing linguistic or reasoning cues.
 
 Format your answer exactly as:
-Rating: x/5. Justification: [One concise sentence]."""
+Rating: x/5. Justification: [One concise sentence].""",
+}
+
+
+def score_expertise_with_llm(
+    contribution: str,
+    context: str,
+    topic: str,
+    api_key: str,
+    model: str = "gpt-4o-mini",
+    prompt: str = "paper",
+) -> Tuple[Optional[int], str]:
+    """
+    Score expertise level of a contribution using an LLM.
+
+    Args:
+        contribution: The speech act to evaluate.
+        context: Previous speech acts for context.
+        topic: Topic of deliberation.
+        api_key: OpenAI API key.
+        model: Model to use.
+        prompt: Key of SYSTEM_PROMPTS ("paper" = Appendix A, the published scores).
+
+    Returns:
+        Tuple of (rating 1-5, justification string).
+        Rating is None if the API call failed.
+    """
+    client = OpenAI(api_key=api_key)
+
+    system_prompt = SYSTEM_PROMPTS[prompt]
 
     user_prompt = f"""Topic of deliberation: {topic}
 

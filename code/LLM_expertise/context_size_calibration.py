@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+import threading
 import time
 
 import numpy as np
@@ -36,8 +38,13 @@ CONTEXT_BUDGETS = [0, 100, 500, 1000]
 SUBSET_SIZE = 200
 RANDOM_SEED = 42
 MODEL = "gpt-4o-mini"
-ASSEMBLIES = ["8th_amendment", "gendereq", "scotland"]
-CONTENT_WORD_THRESHOLD = 5
+# The ageing-population voting session belongs to the same Irish assembly as the Eighth Amendment session.
+# It was scored from the 8th_amendment folder, so its published scores used the 8th_amendment topic string;
+# the calibration reproduces that (TOPIC_FOLDER) and pools it with that assembly for stratification.
+ASSEMBLIES = ["8th_amendment", "ageing_population", "gendereq", "scotland"]
+ASSEMBLY_OF = {"ageing_population": "8th_amendment"}
+TOPIC_FOLDER = {"ageing_population": "8th_amendment"}
+CONTENT_WORD_THRESHOLD = 5  # default; --thresholds overrides. Always ">=" (substantial = at least N content words)
 
 # Set random seeds for reproducibility
 random.seed(RANDOM_SEED)
@@ -59,7 +66,7 @@ class Utterance:
     date: str = ""
 
 
-def load_assembly_data(base_dir: str, assembly: str, encoding) -> List[Utterance]:
+def load_assembly_data(base_dir: str, assembly: str, encoding, threshold: int = CONTENT_WORD_THRESHOLD) -> List[Utterance]:
     """
     Load all CSV files for a given assembly and return list of Utterance objects.
 
@@ -94,19 +101,19 @@ def load_assembly_data(base_dir: str, assembly: str, encoding) -> List[Utterance
                     # Use existing content word count if available, otherwise compute
                     if 'num_non_function_words' in row and row['num_non_function_words']:
                         try:
-                            content_word_count = int(row['num_non_function_words'])
+                            content_word_count = int(float(row['num_non_function_words']))  # stored as '779.0'
                         except (ValueError, TypeError):
                             content_word_count = count_content_words(text)
                     else:
                         content_word_count = count_content_words(text)
 
-                    is_substantial = content_word_count >= CONTENT_WORD_THRESHOLD
+                    is_substantial = content_word_count >= threshold
 
                     utterance_id = f"{assembly}_{csv_file}_{row_idx}"
 
                     utterances.append(Utterance(
                         utterance_id=utterance_id,
-                        assembly=assembly,
+                        assembly=ASSEMBLY_OF.get(assembly, assembly),
                         file_name=csv_file,
                         row_index=row_idx,
                         speaker=row.get('speaker', 'Unknown'),
@@ -280,7 +287,7 @@ def build_context(
 
     # Format as expected by LLM
     context_lines = [
-        f"[{u.row_index}] {u.speaker}: {u.text}"
+        f"[{u.row_index + 1}] {u.speaker}: {u.text}"
         for u in context_utterances
     ]
 
@@ -318,12 +325,12 @@ def build_context_20_utterances(
     # Sort by row_index
     preceding = sorted(preceding, key=lambda u: u.row_index)
 
-    # Take last 20 (or fewer if not available)
-    context_utterances = preceding[-20:]
+    # The 20 preceding CSV rows, empty rows skipped (as in llm_expert_extract_new.get_context_window)
+    context_utterances = [u for u in preceding if u.row_index >= target_utterance.row_index - 20]
 
     # Format
     context_lines = [
-        f"[{u.row_index}] {u.speaker}: {u.text}"
+        f"[{u.row_index + 1}] {u.speaker}: {u.text}"
         for u in context_utterances
     ]
 
@@ -338,196 +345,125 @@ def run_calibration_experiment(
     api_key: str,
     output_dir: str,
     model: str = MODEL,
-    rate_limit_delay: float = 0.5
-) -> pd.DataFrame:
+    rate_limit_delay: float = 0.0,
+    thresholds: Tuple[int, ...] = (CONTENT_WORD_THRESHOLD,),
+    prompt: str = "paper",
+    workers: int = 8,
+) -> Dict[int, pd.DataFrame]:
     """
-    Run the full context size calibration experiment.
+    Run the context size calibration once per content-word threshold (substantial = >= threshold).
 
-    Args:
-        base_dir: Base directory containing processed CSV files
-        api_key: OpenAI API key
-        output_dir: Directory to save results
-        model: LLM model to use
-        rate_limit_delay: Delay between API calls
-
-    Returns:
-        DataFrame with all results
+    Each threshold gets its own stratified sample (same seed). An utterance sampled under several
+    thresholds is scored once per context condition and the score is reused, so the runs differ only
+    in which utterances they contain. Results go to <output_dir>/ge<threshold>/context_calibration_results.csv.
     """
-    print("="*80)
+    print("=" * 80)
     print("CONTEXT SIZE CALIBRATION EXPERIMENT")
-    print("="*80)
-    print(f"Model: {model}")
-    print(f"Context budgets: {CONTEXT_BUDGETS}")
-    print(f"Sample size: {SUBSET_SIZE}")
-    print(f"Random seed: {RANDOM_SEED}")
-    print("="*80)
+    print("=" * 80)
+    print(f"Model: {model} | prompt: {prompt} | thresholds (>=): {list(thresholds)}")
+    print(f"Context conditions: {CONTEXT_BUDGETS + ['20_utterances']} | sample size: {SUBSET_SIZE} | seed: {RANDOM_SEED}")
 
-    # Initialize tokenizer
     encoding = tiktoken.encoding_for_model(model)
 
-    # 1. Load all data
-    print("\n[1/5] Loading assembly data...")
-    all_utterances = []
-    for assembly in ASSEMBLIES:
-        print(f"  Loading {assembly}...")
-        utts = load_assembly_data(base_dir, assembly, encoding)
-        all_utterances.extend(utts)
-        print(f"    Loaded {len(utts)} utterances")
+    samples = {}
+    utterances_by_file = None
+    for thr in thresholds:
+        all_utterances = []
+        for assembly in ASSEMBLIES:
+            all_utterances.extend(load_assembly_data(base_dir, assembly, encoding, threshold=thr))
+        n_sub = sum(u.is_substantial for u in all_utterances)
+        print(f"\n>= {thr} content words: {n_sub} substantial of {len(all_utterances)} non-empty utterances")
+        samples[thr] = stratified_sample(all_utterances, SUBSET_SIZE, RANDOM_SEED)
+        if utterances_by_file is None:  # context is built from all non-empty rows, whatever the threshold
+            utterances_by_file = defaultdict(list)
+            for u in all_utterances:
+                utterances_by_file[f"{u.assembly}/{u.file_name}"].append(u)
+            for key in utterances_by_file:
+                utterances_by_file[key].sort(key=lambda u: u.row_index)
 
-    print(f"\nTotal utterances loaded: {len(all_utterances)}")
-    substantial = [u for u in all_utterances if u.is_substantial]
-    print(f"Substantial utterances (>={CONTENT_WORD_THRESHOLD} content words): {len(substantial)}")
+    unique = {u.utterance_id: u for smp in samples.values() for u in smp}
+    conditions = CONTEXT_BUDGETS + ["20_utterances"]
+    jobs = [(uid, c) for uid in unique for c in conditions]
+    random.shuffle(jobs)  # interleave conditions and utterances
+    print(f"\nUnique utterances: {len(unique)} | API calls: {len(jobs)} | workers: {workers}")
 
-    # 2. Stratified sampling
-    print("\n[2/5] Performing stratified sampling...")
-    sampled_utterances = stratified_sample(all_utterances, SUBSET_SIZE, RANDOM_SEED)
+    cache: Dict[Tuple[str, str], dict] = {}
+    lock = threading.Lock()
+    done = [0]
 
-    # 3. Build lookup for fast context retrieval
-    print("\n[3/5] Organizing utterances by file...")
-    utterances_by_file = defaultdict(list)
-    for u in all_utterances:
-        utterances_by_file[f"{u.assembly}/{u.file_name}"].append(u)
-
-    # Sort each file's utterances by row_index
-    for key in utterances_by_file:
-        utterances_by_file[key] = sorted(
-            utterances_by_file[key],
-            key=lambda u: u.row_index
-        )
-
-    # 4. Run LLM scoring across all conditions
-    print("\n[4/5] Running LLM scoring...")
-    print(f"Total API calls: {len(sampled_utterances) * (len(CONTEXT_BUDGETS) + 1)}")
-
-    results = []
-
-    # Randomize order to avoid API caching effects
-    scoring_order = list(range(len(sampled_utterances)))
-    random.shuffle(scoring_order)
-
-    for i, idx in enumerate(scoring_order):
-        utt = sampled_utterances[idx]
-
-        print(f"\nScoring utterance {i+1}/{len(sampled_utterances)}: {utt.utterance_id}")
-        print(f"  Assembly: {utt.assembly}, Length: {utt.token_count} tokens")
-
-        file_key = f"{utt.assembly}/{utt.file_name}"
-        all_in_file = utterances_by_file[file_key]
+    def score_one(job):
+        uid, condition = job
+        utt = unique[uid]
+        all_in_file = utterances_by_file[f"{utt.assembly}/{utt.file_name}"]
+        if condition == "20_utterances":
+            context, actual_tokens, n_utts = build_context_20_utterances(utt, all_in_file, encoding)
+        else:
+            context, actual_tokens, n_utts = build_context(utt, all_in_file, condition, encoding)
         topic = extract_topic(utt.assembly)
-
-        # Randomize condition order for this utterance
-        conditions = CONTEXT_BUDGETS + ["20_utterances"]
-        random.shuffle(conditions)
-
-        for condition in conditions:
-            if condition == "20_utterances":
-                context, actual_tokens, n_utts = build_context_20_utterances(
-                    utt, all_in_file, encoding
-                )
-                budget_label = "20_utterances"
-            else:
-                context, actual_tokens, n_utts = build_context(
-                    utt, all_in_file, condition, encoding
-                )
-                budget_label = condition
-
-            print(f"  Condition: {budget_label} (actual: {actual_tokens} tokens, {n_utts} utts)...", end=' ')
-
-            score, justification = score_expertise_with_llm(
-                utt.text,
-                context,
-                topic,
-                api_key,
-                model
-            )
-
+        score, justification = None, ""
+        for attempt in range(4):
+            score, justification = score_expertise_with_llm(utt.text, context, topic, api_key, model, prompt=prompt)
             if score is not None:
-                print(f"Score: {score}/5")
-            else:
-                print(f"FAILED: {justification}")
-
-            results.append({
-                "utterance_id": utt.utterance_id,
-                "assembly": utt.assembly,
-                "file_name": utt.file_name,
-                "row_index": utt.row_index,
-                "speaker": utt.speaker,
-                "target_text": utt.text,
-                "target_token_count": utt.token_count,
-                "target_content_words": utt.content_word_count,
-                "budget_condition": budget_label,
-                "actual_tokens_used": actual_tokens,
-                "n_utterances_in_context": n_utts,
-                "score": score,
-                "justification": justification
-            })
-
-            # Rate limiting
+                break
+            time.sleep(2 ** attempt * 5)
+        if rate_limit_delay:
             time.sleep(rate_limit_delay)
+        rec = {"budget_condition": condition, "actual_tokens_used": actual_tokens,
+               "n_utterances_in_context": n_utts, "score": score, "justification": justification}
+        with lock:
+            cache[(uid, str(condition))] = rec
+            done[0] += 1
+            if done[0] % 100 == 0:
+                print(f"  {done[0]}/{len(jobs)} scored")
+        return rec
 
-    # 5. Save results
-    print("\n[5/5] Saving results...")
-    os.makedirs(output_dir, exist_ok=True)
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        list(ex.map(score_one, jobs))
 
-    results_df = pd.DataFrame(results)
-    results_path = os.path.join(output_dir, "context_calibration_results.csv")
-    results_df.to_csv(results_path, index=False)
-
-    print(f"\n✓ Results saved to: {results_path}")
-    print(f"  Total rows: {len(results_df)}")
-
-    return results_df
+    out = {}
+    for thr, smp in samples.items():
+        rows = []
+        for utt in smp:
+            for c in conditions:
+                rows.append({
+                    "utterance_id": utt.utterance_id, "assembly": utt.assembly, "file_name": utt.file_name,
+                    "row_index": utt.row_index, "speaker": utt.speaker, "target_text": utt.text,
+                    "target_token_count": utt.token_count, "target_content_words": utt.content_word_count,
+                    **cache[(utt.utterance_id, str(c))]})
+        df = pd.DataFrame(rows)
+        d = os.path.join(output_dir, f"ge{thr}")
+        os.makedirs(d, exist_ok=True)
+        df.to_csv(os.path.join(d, "context_calibration_results.csv"), index=False)
+        print(f"\n>= {thr}: {df.utterance_id.nunique()} utterances, {df.score.isna().sum()} failed calls -> {d}")
+        out[thr] = df
+    return out
 
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Context Size Calibration for Expertise Scoring"
-    )
-    parser.add_argument(
-        '--base-dir',
-        default='./data/assemblies/processed_files',
-        help='Base directory containing processed CSV files'
-    )
-    parser.add_argument(
-        '--output-dir',
-        default='./results/context_calibration',
-        help='Output directory for results and plots'
-    )
-    parser.add_argument(
-        '--model',
-        default=MODEL,
-        help=f'OpenAI model to use (default: {MODEL})'
-    )
-    parser.add_argument(
-        '--delay',
-        type=float,
-        default=0.5,
-        help='Delay between API calls in seconds (default: 0.5)'
-    )
-
+    parser = argparse.ArgumentParser(description="Context Size Calibration for Expertise Scoring")
+    parser.add_argument('--base-dir', default='./data/assemblies/processed_files',
+                        help='Base directory containing processed CSV files')
+    parser.add_argument('--output-dir', default='./results/context_calibration',
+                        help='Output directory; one ge<threshold>/ subfolder per threshold')
+    parser.add_argument('--model', default=MODEL, help=f'OpenAI model to use (default: {MODEL})')
+    parser.add_argument('--delay', type=float, default=0.0, help='Extra delay per call and worker (s)')
+    parser.add_argument('--thresholds', type=int, nargs='+', default=[CONTENT_WORD_THRESHOLD],
+                        help='Content-word thresholds; substantial = >= threshold (e.g. 5 10 20)')
+    parser.add_argument('--prompt', default='paper', choices=['paper', 'lived_experience'],
+                        help='System prompt: "paper" = Appendix A, the prompt behind the published scores')
+    parser.add_argument('--workers', type=int, default=8, help='Parallel API calls')
     args = parser.parse_args()
 
-    # Get API key
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         print("Error: OPENAI_API_KEY environment variable not set")
         sys.exit(1)
 
-    # Run experiment
-    results_df = run_calibration_experiment(
-        base_dir=args.base_dir,
-        api_key=api_key,
-        output_dir=args.output_dir,
-        model=args.model,
-        rate_limit_delay=args.delay
-    )
-
-    print("\n" + "="*80)
-    print("EXPERIMENT COMPLETE")
-    print("="*80)
-    print("\nNext step: Run analysis with:")
-    print(f"  python analyze_calibration.py --results-file {args.output_dir}/context_calibration_results.csv")
+    run_calibration_experiment(base_dir=args.base_dir, api_key=api_key, output_dir=args.output_dir,
+                               model=args.model, rate_limit_delay=args.delay, thresholds=tuple(args.thresholds),
+                               prompt=args.prompt, workers=args.workers)
+    print("\nNext: python code/LLM_expertise/analyze_calibration.py --results-file <output-dir>/ge<N>/context_calibration_results.csv --output-dir <output-dir>/ge<N>")
 
 
 if __name__ == "__main__":
