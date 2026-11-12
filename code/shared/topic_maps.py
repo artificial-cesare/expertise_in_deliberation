@@ -36,6 +36,9 @@ EXPERT_TOPICS: Dict[str, str] = {
 
 _LLM_TOPIC_PROMPTS: Dict[str, str] = {
     "8th_amendment": "the 8th Amendment and reproductive rights in Ireland",
+    # Irish Citizens' Assembly 2016-18, voting session of 8-9 July 2017. Until 2026-11-12 this transcript sat in the
+    # 8th_amendment folder and was scored with that topic; reproduce/rescore_ageing.py rescored it with this one.
+    "ageing_population": "how Ireland can best respond to the challenges and opportunities of an ageing population",
     "gendereq": "gender equality and related social policies",
     "gender": "gender equality and related social policies",
     "scotland": "proposals for Scottish governance and policy",
@@ -70,6 +73,8 @@ def extract_topic(identifier: str) -> str:
             return _LLM_TOPIC_PROMPTS["scotland"]
         if "gendereq" in p:
             return _LLM_TOPIC_PROMPTS["gendereq"]
+        if "ageing" in p:
+            return _LLM_TOPIC_PROMPTS["ageing_population"]
         if "8th" in p or "amendment" in p:
             return _LLM_TOPIC_PROMPTS["8th_amendment"]
         if "constitution" in p:

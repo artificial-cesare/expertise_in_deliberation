@@ -99,9 +99,9 @@ bash reproduce/run_all.sh        # PY=/path/to/python picks the environment
 | Table 4 (k-means accuracy) | `code/embeddings/k_means_exp.py` | needs the GPU; recorded in `records/kmeans_*.txt` |
 | Table 5 (kappa) | `code/validation/kappa_filtered_new.py` | yes, identical |
 | Figs 1–2 (UMAP) | `code/embeddings/plotting.py` | needs the GPU and `models/` |
-| Figs 3–4, Appendix B (correlations) | `reproduce/correlations.py` | yes, pixel-identical with `--scotland-llm drop` |
+| Figs 3–4, Appendix B (correlations) | `reproduce/correlations.py` | yes, pixel-identical with `--scotland-llm drop --legacy-gt5` |
 | Appendix C (temporal plots) | `reproduce/correlations.py` | yes, up to file read order |
-| Results "Time Difference Analysis", Table 7 | `reproduce/temporal_kw.py` | yes, all values |
+| Results "Time Difference Analysis", Table 7 | `reproduce/temporal_kw.py` | yes, all values, with `--min-words 0` |
 | Context calibration (Methods) | `code/LLM_expertise/context_size_calibration.py` | needs the API; the surviving run is in `records/context_calibration_summary.txt` |
 
 `reproduce/paper_corr.py` is a frozen copy of the correlation code the figures were made with.
@@ -118,11 +118,22 @@ The features in the CSVs were computed by `code/handcrafted_features/new_feats_e
   figure was most likely made from an earlier copy of the CSVs. `--scotland-llm drop` reproduces the figures;
   `keep` uses all three (for example, LLM score vs. normalised length goes from r = .51 to .32;
   vs. ArgQA it stays at .67–.68).
-- **Thresholds differ between analyses.** Tables use ≥ 5 content words (3,607 utterances),
-  correlations use > 5 (3,183), and the temporal tests apply no filter. `temporal_kw.py --min-words 5`
-  applies one.
+- **Content-word threshold: ≥ 5 everywhere** (3,607 substantial utterances): tables, correlations,
+  temporal tests, embeddings, ArgQA and LLM scoring, and the context calibration. The published
+  (Overleaf) correlation figures used > 5 (3,183) and the published temporal tests no filter;
+  `correlations.py --legacy-gt5` and `temporal_kw.py --min-words 0` rebuild those.
 - **The LLM scores use a fixed 20-utterance context window** (`llm_expert_extract_new.py`), not a
-  token budget. The calibration script uses a newer prompt than the one in the paper's Appendix A.
+  token budget. `llm_utils.SYSTEM_PROMPTS["paper"]` is the Appendix A prompt that produced the scores
+  and is the default; `"lived_experience"` is a later revision. The first calibration run
+  (`outputs/paper_v2/calibration/`) used the later prompt; `outputs/paper_v2/calibration_appendixA/`
+  repeats it with the Appendix A prompt at ≥ 5, 10 and 20 content words.
+- **Duplicated expert hearing.** `experts/gender/committees.parliament.uk_speeches.csv` was processed from an HTML
+  file identical to `committees.parliament.uk5.html`. `reproduce/centroids_v2.py` refits the PCA and k-means without it
+  (it reproduces the stored models to 1e-6 when the copy is kept) and writes `outputs/paper_v2/embeddings_v2.csv`;
+  the fine-tuned model was trained with the copy included.
+- **Ageing session rescored.** It was first scored with the Eighth Amendment topic string;
+  `reproduce/rescore_ageing.py` rescored it with its own topic into `outputs/paper_v2/llm_v2.csv`.
+  `paper_v2_stats.load()` merges both files over the stored CSV columns (originals kept as `*_v1`); the data CSVs are unchanged.
 - **Normalised features are scaled per transcript file**, not per corpus
   (`compute_corpus_statistics` runs once per CSV in `new_feats_extract.py`).
 - **The embedding columns** (`distance_*`, `similarity_*`) were written on the GPU server by a

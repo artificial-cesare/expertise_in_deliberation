@@ -21,7 +21,7 @@ D["mean_word_len_raw"] = [np.mean([len(w) for w in WORD.findall(str(t))]) if WOR
 OUT = {}
 
 # ---- 1. experts vs citizens: length and mean word length --------------------------------------------
-c = D[(D.assembly == "Constitutional Reform") & (D.num_non_function_words >= 5)]
+c = D[(D.folder == "8th_amendment") & (D.num_non_function_words >= 5)]  # the session with experts
 e, p = c[c.role == "expert"], c[c.role == "participant"]
 def compare(col):
     u = mannwhitneyu(e[col], p[col])
@@ -57,7 +57,7 @@ for thr in (5, 10, 20):
            "r_loglen": r_p(s.expertise_llm_score, s.loglen),
            "raw": {f: r_p(s.expertise_llm_score, s[f]) for f in FEATS},
            "partial": {f: partial(s, "expertise_llm_score", f, True) for f in FEATS if f != "specificity_length_norm"}}
-    k = s[(s.assembly == "Constitutional Reform") & s.role.isin(["expert", "participant"])]
+    k = s[(s.folder == "8th_amendment") & s.role.isin(["expert", "participant"])]
     rr = residual(k.expertise_llm_score.values, [k.loglen])
     row["known_groups"] = {"n_expert": int((k.role == "expert").sum()), "n_citizen": int((k.role == "participant").sum()),
                            "gap_raw": round(k[k.role == "expert"].expertise_llm_score.mean() - k[k.role == "participant"].expertise_llm_score.mean(), 2),

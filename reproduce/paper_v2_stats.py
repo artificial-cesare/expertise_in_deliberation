@@ -1,7 +1,10 @@
 """Every statistic quoted in the revised paper, on the revised corpus.
 
-Revised corpus: the ageing-population transcript (data/assemblies/processed_files/ageing_population/)
-is no longer part of "Constitutional Reform". All three assemblies' LLM scores are used.
+Revised corpus: the Irish 2016-18 assembly ("Constitutional Reform") has two transcripts, the final weekend
+on the Eighth Amendment and a voting session on the ageing population
+(data/assemblies/processed_files/ageing_population/). There are no expert hearings on the ageing population; like
+the Eighth Amendment session, its embedding distances/similarities are computed against the constitutional hearings
+(2026-11-12; until then they were set to NaN). It enters every analysis. All three assemblies' LLM scores are used.
 Substantial utterances: >= 5 content words everywhere ("gt5" results are kept for comparison only).
 lexical_sophistication and evidential_markers are the corrected v2 columns from
 outputs/paper_v2/features_v2.csv (run reproduce/features_v2.py first); the originals are kept as *_v1.
@@ -17,6 +20,8 @@ from sklearn.metrics import cohen_kappa_score
 
 ROOT = Path("data/assemblies/processed_files")
 ASM = {"8th_amendment": "Constitutional Reform", "gendereq": "Gender Equality", "scotland": "Public Policy"}
+FOLDERS = {**ASM, "ageing_population": "Constitutional Reform"}  # ageing session: same 2016-18 Irish assembly
+EMB = ["distance_base", "similarity_base", "distance_finetuned", "similarity_finetuned"]
 FEATS = ["jargon_density", "lexical_sophistication", "syntactic_complexity", "reasoning_markers", "evidential_markers",
          "length_tokens", "num_non_function_words", "hedge_density", "booster_density", "epistemic_balance",
          "specificity_length_norm", "specificity_mean_word_len_norm", "specificity_numbers_norm",
@@ -41,13 +46,20 @@ ROLE_GROUP = {"expert": "expert", "participant": "participant", "chair": "facili
               "secretariat": "facilitation", "rapporteur": "rapporteur", "unknown": "unknown"}
 
 
-def load() -> pd.DataFrame:
+def load(include_ageing_embeddings: bool = True, embeddings: str = "v2", llm: str = "v2") -> pd.DataFrame:
+    """include_ageing_embeddings: keep the ageing session's embedding columns (distance/similarity to the
+    constitutional hearings, checked in embedding_space_check.py); False sets them to NaN (2026-11-03 analyses).
+    embeddings="v2": distance/similarity from reproduce/centroids_v2.py (expert corpus without the duplicated gender
+    hearing), stored columns kept as *_v1; "stored": the columns in the CSVs.
+    llm="v2": LLM scores from outputs/paper_v2/llm_v2.csv where present (the ageing session rescored with its own
+    topic, reproduce/rescore_ageing.py), stored scores kept as expertise_llm_score_v1; "stored": the CSV scores."""
     parts = []
-    for folder, name in ASM.items():
+    for folder, name in FOLDERS.items():
         for f in sorted((ROOT / folder).glob("*_speeches.csv")):
             d = pd.read_csv(f)
             k = len(d) // 3
-            d = d.assign(assembly=name, file=f.name, pos=np.arange(len(d)) / len(d),
+            if folder == "ageing_population" and not include_ageing_embeddings: d[EMB] = np.nan
+            d = d.assign(assembly=name, folder=folder, file=f.name, pos=np.arange(len(d)) / len(d),
                          window=["start"] * k + ["middle"] * k + ["end"] * (len(d) - 2 * k))
             parts.append(d)
     d = pd.concat(parts, ignore_index=True)
@@ -59,6 +71,20 @@ def load() -> pd.DataFrame:
         d = d.merge(pd.read_csv(v2).drop(columns="folder"), on=["file", "row"], how="left")
         for f in ("lexical_sophistication", "evidential_markers"):
             d[f + "_v1"] = d[f]; d[f] = d[f + "_v2"]
+    if "row" not in d: d["row"] = d.groupby("file").cumcount()
+    emb = Path("outputs/paper_v2/embeddings_v2.csv")
+    if embeddings == "v2" and emb.exists():
+        for c in EMB: d[c + "_v1"] = d[c]
+        d = d.drop(columns=EMB).merge(pd.read_csv(emb), on=["file", "row"], how="left")
+        if not include_ageing_embeddings: d.loc[d.folder == "ageing_population", EMB] = np.nan
+    llm_v2 = Path("outputs/paper_v2/llm_v2.csv")
+    d["expertise_llm_score_v1"] = d["expertise_llm_score"]
+    if llm == "v2" and llm_v2.exists():
+        L = pd.read_csv(llm_v2)[["file", "row", "expertise_llm_score", "expertise_justification"]]
+        d = d.merge(L.rename(columns={"expertise_llm_score": "_llm2", "expertise_justification": "_just2"}), on=["file", "row"], how="left")
+        has = d._llm2.notna() | d.file.isin(L.file.unique())  # every row of a rescored file takes the new value (NaN = not scored)
+        d.loc[has, "expertise_llm_score"] = d.loc[has, "_llm2"]; d.loc[has, "expertise_justification"] = d.loc[has, "_just2"]
+        d = d.drop(columns=["_llm2", "_just2"])
     d["words"] = d.text.astype(str).str.split().str.len()
     d["loglen"] = np.log1p(d.length_tokens)
     return d
@@ -118,7 +144,7 @@ def main():
     g = s5.groupby(["assembly", "role_group"])
     S["roles"] = g.agg(n=("expertise_llm_score", "size"), llm_mean=("expertise_llm_score", "mean"),
                        argqa_mean=("overall_score", "mean"), median_tokens=("length_tokens", "median")).round(2).reset_index().to_dict("records")
-    c = s5[s5.assembly == "Constitutional Reform"]
+    c = s5[s5.folder == "8th_amendment"]  # experts and citizens in the same session
     e, p_ = c[c.role == "expert"], c[c.role == "participant"]
     u = mannwhitneyu(e.expertise_llm_score, p_.expertise_llm_score)
     xx = c[c.role.isin(["expert", "participant"])]
@@ -143,7 +169,7 @@ def main():
                              "trend": "up" if m[0] < m[1] < m[2] else "down" if m[0] > m[1] > m[2] else "mixed"})
         T = pd.DataFrame(rows); T["q"] = multipletests(T.p, method="fdr_bh")[1]
         S[f"temporal_{lab}"] = T.round(4).to_dict("records")
-    # Kappa (Table 5) without the ageing-population item
+    # Kappa (Table 5). "published" is the paper's set (ageing-population item included); "revised" drops it
     R = pd.read_csv("data/validation/ratings_matrix.csv", index_col=0)
     excl = {"experts/future/committees.parliament.uk_speeches.csv/row_69", "assemblies/scotland/8992int020_speeches.csv/row_67",
             "experts/constitution/committees.parliament.uk_speeches.csv/row_0"}

@@ -39,7 +39,7 @@ OUT["roles"] = (S.groupby(["assembly", "role_group"])
                 .round(2).reset_index().to_dict("records"))
 def mw(a, b, col):
     u = mannwhitneyu(a[col], b[col]); return {"p": float(u.pvalue), "rank_biserial": round(float(2 * u.statistic / (len(a) * len(b)) - 1), 3)}
-c = S[S.assembly == "Constitutional Reform"]; g = S[S.assembly == "Gender Equality"]; pp = S[S.assembly == "Public Policy"]
+c = S[S.folder == "8th_amendment"]; g = S[S.assembly == "Gender Equality"]; pp = S[S.assembly == "Public Policy"]
 OUT["role_tests"] = {
     "constitutional_expert_vs_citizen": {k: mw(c[c.role == "expert"], c[c.role == "participant"], k) for k in ("expertise_llm_score", "expertise_llm_score_lc")},
     "constitutional_secretariat_vs_citizen": {k: mw(c[c.role == "secretariat"], c[c.role == "participant"], k) for k in ("expertise_llm_score", "expertise_llm_score_lc")},

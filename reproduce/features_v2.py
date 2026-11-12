@@ -29,7 +29,7 @@ def content_zipfs(doc):
 
 
 rows = []
-for folder in ["8th_amendment", "gendereq", "scotland"]:
+for folder in ["8th_amendment", "ageing_population", "gendereq", "scotland"]:
     for f in sorted((ROOT / folder).glob("*_speeches.csv")):
         df = pd.read_csv(f)
         texts = df["text"].fillna("").astype(str).tolist()

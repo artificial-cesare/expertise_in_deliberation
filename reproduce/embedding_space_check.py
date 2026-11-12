@@ -13,6 +13,7 @@
    For each: assembly cross-topic accuracy, correlation with the LLM score (raw and at equal length and assembly),
    and a known-groups check (expert witnesses vs citizens in the constitutional-reform session, at equal length).
 
+The ageing-population voting session is included (constitutional hearings as its expert reference).
 Run from the repo root (CL env):  python reproduce/embedding_space_check.py [--device mps]
 Embeddings are cached in outputs/paper_v2/embedding_check/.
 """
@@ -32,18 +33,26 @@ args = ap.parse_args()
 OUT = Path("outputs/paper_v2/embedding_check"); OUT.mkdir(parents=True, exist_ok=True)
 TOPIC = {"Constitutional Reform": "constitution", "Gender Equality": "gender", "Public Policy": "future"}
 MODEL = {"base": "Qwen/Qwen3-Embedding-0.6B", "finetuned": "models/qwen3_expert_contrastive_final/best_model"}
-K = {"base": {"constitution": 3, "future": 3, "gender": 3}, "finetuned": {"constitution": 3, "future": 4, "gender": 3}}
+# centroids and k from reproduce/centroids_v2.py (expert corpus without the duplicated gender hearing)
+CV2 = Path("outputs/paper_v2/centroids_v2")
+K = {m: v["k"] for m, v in json.loads((CV2 / "metrics.json").read_text()).items()}
+DUPLICATE = ("gender", "committees.parliament.uk_speeches.csv")  # copy of committees.parliament.uk5
 
-D = load(); S = D[D.num_non_function_words >= 5].reset_index(drop=True)
+D = load()  # stored values, ageing included, are recomputed and checked below
+S = D[D.num_non_function_words >= 5].reset_index(drop=True)
+# The ageing voting session belongs to the Irish 2016-18 assembly: compared with the constitutional hearings,
+# like the Eighth Amendment session (no hearings on the ageing population exist).
+AGE = (S.folder == "ageing_population").values
 S["topic"] = S.assembly.map(TOPIC)
 ex = []
 for topic in ("constitution", "future", "gender"):
     for f in sorted(Path(f"data/assemblies/processed_files/experts/{topic}").glob("*_speeches.csv")):
         d = pd.read_csv(f)
         d = d[(d.num_non_function_words >= 5) & d.text.notna()]
-        ex += [(topic, str(t).strip()) for t in d.text if str(t).strip()]
-E_topic = np.array([t for t, _ in ex]); E_text = [x for _, x in ex]
-print("experts:", pd.Series(E_topic).value_counts().to_dict(), "| assembly:", len(S), flush=True)
+        ex += [(topic, f.name, str(t).strip()) for t in d.text if str(t).strip()]
+E_keep = np.array([(t, f) != DUPLICATE for t, f, _ in ex])  # the cache holds all 1,667; the duplicate is masked out
+E_topic = np.array([t for t, _, _ in ex])[E_keep]; E_text = [x for _, _, x in ex]
+print("experts:", pd.Series(E_topic).value_counts().to_dict(), "(duplicate removed) | assembly:", len(S), flush=True)
 
 def embed(name, which, texts):
     p = OUT / f"{name}_{which}.npy"
@@ -63,7 +72,7 @@ def stats(score, label):
     r, p = pearsonr(s.m, s.expertise_llm_score)
     cov = [s.loglen] + [s.assembly == a for a in sorted(s.assembly.unique())[1:]]
     pr, pp = pearsonr(residual(s.m.values, cov), residual(s.expertise_llm_score.values, cov))
-    c = s[(s.assembly == "Constitutional Reform") & s.role.isin(["expert", "participant"])]
+    c = s[(s.folder == "8th_amendment") & s.role.isin(["expert", "participant"])]  # experts and citizens, same session
     rr = residual(c.m.values, [c.loglen]); sd = c.m.std()
     gap = (rr[(c.role == "expert").values].mean() - rr[(c.role == "participant").values].mean()) / sd
     # OLS: measure ~ 1 + log length + expert; two-sided t-test on the expert coefficient
@@ -79,12 +88,15 @@ def stats(score, label):
 res = {}
 for name in args.models:
     print(f"\n== {name}", flush=True)
-    Xe, Xa = embed(name, "experts", E_text), embed(name, "assembly", list(S.text.astype(str)))
+    Xe = embed(name, "experts", E_text)[E_keep]
+    # cached embeddings of the 3,413 non-ageing utterances (same order) + the ageing session
+    Xn = embed(name, "assembly", list(S.text[~AGE].astype(str)))
+    Xg = embed(name, "assembly_ageing", list(S.text[AGE].astype(str)))
+    Xa = np.zeros((len(S), Xn.shape[1]), dtype=Xn.dtype); Xa[~AGE] = Xn; Xa[AGE] = Xg
     R = {"measures": []}
     # ---- 1. PCA (paper) ------------------------------------------------------------------------
-    mdir = Path(f"outputs/embeddings/{name}_kmeans_global_pca/models")
-    pca = joblib.load(mdir / f"pca_model_{name}.pkl"); C = np.load(mdir / f"centroids_100d_{name}.npy")
-    labels = np.array([t for t, _ in joblib.load(mdir / f"centroid_labels_{name}.pkl")])
+    pca = joblib.load(CV2 / name / "pca.pkl"); C = np.load(CV2 / name / "centroids_100d.npy")
+    labels = np.array(joblib.load(CV2 / name / "centroid_labels.pkl"))
     Za = pca.transform(Xa); dist = np.full(len(S), np.nan); sim = np.full(len(S), np.nan)
     for t in TOPIC.values():
         i = (S.topic == t).values; Ct = C[labels == t]
@@ -92,7 +104,9 @@ for name in args.models:
         dist[i] = dd.min(1); sim[i] = cosine_similarity(Za[i], Ct)[np.arange(i.sum()), j]
     R["check_stored"] = {"distance_r": round(pearsonr(dist, S[f"distance_{name}"])[0], 4),
                          "distance_max_abs_diff": round(float(np.nanmax(np.abs(dist - S[f"distance_{name}"]))), 4),
-                         "similarity_r": round(pearsonr(sim, S[f"similarity_{name}"])[0], 4)}
+                         "similarity_r": round(pearsonr(sim, S[f"similarity_{name}"])[0], 4),
+                         "ageing_distance_max_abs_diff": round(float(np.nanmax(np.abs(dist[AGE] - S[f"distance_{name}"].values[AGE]))), 4),
+                         "ageing_similarity_max_abs_diff": round(float(np.nanmax(np.abs(sim[AGE] - S[f"similarity_{name}"].values[AGE]))), 4)}
     acc = np.mean(labels[euclidean_distances(Za, C).argmin(1)] == S.topic.values)
     R["measures"].append({**stats(S[f"similarity_{name}"].values, "PCA-100 centroid similarity (paper)"), "assembly_accuracy": round(acc, 3)})
     R["measures"].append(stats(-S[f"distance_{name}"].values, "PCA-100 centroid distance (paper, negated)"))

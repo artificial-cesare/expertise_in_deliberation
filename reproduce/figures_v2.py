@@ -1,7 +1,7 @@
 """Figures 3-4 and Appendix B (revised): correlation and p-value heatmaps.
 
 Same plotting code and global z-scoring as the published figures (reproduce/paper_corr.py), on the revised
-data: ageing-population transcript removed, all three assemblies' LLM scores, >= 5 content words,
+data: ageing-population session included (embedding columns NaN), all three assemblies' LLM scores, >= 5 content words,
 corrected lexical sophistication and broader evidential markers.
 Run from the repo root after features_v2.py:  python reproduce/figures_v2.py
 """
