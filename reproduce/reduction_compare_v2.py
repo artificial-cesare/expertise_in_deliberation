@@ -1,6 +1,7 @@
 """Linear (PCA) vs non-linear (UMAP) reduction: what does the reduction lose? (2026-11-12)
 
-Spaces, all built from the same cached Qwen3 embeddings (expert corpus without the duplicated gender hearing):
+Spaces, all built from the same cached Qwen3 embeddings (expert reference: the witnesses' turns of the
+hearings, without the duplicated gender hearing; reproduce/hearing_roles.py):
   full-1024 (no reduction), PCA-100 (main analysis), PCA-10, UMAP-100, UMAP-10.
 PCA as in centroids_v2.py (fitted on experts); UMAP fitted on experts (cosine, 15 neighbours, min_dist 0, seed 42),
 assembly utterances transformed. In every space: k-means per topic with the k of the main analysis, then for each
@@ -29,18 +30,14 @@ from sklearn.model_selection import GroupKFold, cross_val_predict
 from umap import UMAP
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paper_v2_stats import load, residual
+from hearing_roles import expert_corpus
 
 CACHE, CV2 = Path("outputs/paper_v2/embedding_check"), Path("outputs/paper_v2/centroids_v2")
-DUPLICATE = ("gender", "committees.parliament.uk_speeches.csv")
 TOPIC_OF = {"Constitutional Reform": "constitution", "Gender Equality": "gender", "Public Policy": "future"}
 K = {m: v["k"] for m, v in json.loads((CV2 / "metrics.json").read_text()).items()}
 
-ex = []
-for topic in ("constitution", "future", "gender"):
-    for f in sorted(Path(f"data/assemblies/processed_files/experts/{topic}").glob("*_speeches.csv")):
-        d = pd.read_csv(f); d = d[(d.num_non_function_words >= 5) & d.text.notna()]
-        ex += [(topic, f.name) for t in d.text if str(t).strip()]
-keep = np.array([x != DUPLICATE for x in ex]); E_topic = np.array([t for t, _ in ex])[keep]
+E = expert_corpus()  # cache order; reference = witnesses' turns, duplicate hearing dropped
+keep = ((E.role == "witness") & ~E.duplicate).values; E_topic = E.topic.values[keep]
 D = load(); S = D[D.num_non_function_words >= 5].reset_index(drop=True)
 AGE = (S.folder == "ageing_population").values; S_topic = S.assembly.map(TOPIC_OF).values
 cov = [S.loglen] + [S.assembly == a for a in sorted(S.assembly.unique())[1:]]
@@ -68,7 +65,7 @@ def validity(m):
     c = S.loc[kg]; mv = m[kg]; e = (c.role == "expert").values.astype(float)
     X = np.column_stack([np.ones(len(c)), c.loglen.values, e]); b, *_ = np.linalg.lstsq(X, mv, rcond=None); r = mv - X @ b
     se = np.sqrt(r @ r / (len(c) - 3) * np.linalg.inv(X.T @ X)[2, 2])
-    return round(float(pr), 3), float(pp), round(float(b[2] / mv.std()), 2), float(2 * tdist.sf(abs(b[2] / se), len(c) - 3))
+    return round(float(pr), 4), float(pp), round(float(b[2] / mv.std()), 2), float(2 * tdist.sf(abs(b[2] / se), len(c) - 3))
 
 
 res = []
@@ -81,7 +78,7 @@ for name in ("base", "finetuned"):
         p = joblib.load(CV2 / name / "pca.pkl") if nc == 100 else PCA(n_components=nc, random_state=42).fit(Xe)
         Za = p.transform(Xa); rec = p.inverse_transform(Za)
         oos = 1 - ((Xa - rec) ** 2).sum() / ((Xa - Xa.mean(0)) ** 2).sum()
-        spaces[f"PCA-{nc}"] = (p.transform(Xe), Za, {"expert_var": round(float(p.explained_variance_ratio_.sum()), 3), "assembly_var": round(float(oos), 3)})
+        spaces[f"PCA-{nc}"] = (p.transform(Xe), Za, {"expert_var": round(float(p.explained_variance_ratio_.sum()), 4), "assembly_var": round(float(oos), 4)})
     for nc in (100, 10):
         u = UMAP(n_components=nc, n_neighbors=15, min_dist=0.0, metric="cosine", random_state=42).fit(Xe)
         spaces[f"UMAP-{nc}"] = (u.embedding_, u.transform(Xa), None)
@@ -94,11 +91,11 @@ for name in ("base", "finetuned"):
                                                          cv=GroupKFold(5))) ** 2) / np.sum((y_adj - y_adj.mean()) ** 2)
         trust = 1.0 if sp.startswith("Full") else float(trustworthiness(Xa, Za, n_neighbors=15))
         row = {"model": name, "space": sp, "expert_var": (var or {}).get("expert_var"), "assembly_var": (var or {}).get("assembly_var"),
-               "trustworthiness": round(trust, 3), "rho_dist_full": round(float(spearmanr(d, full_d)[0]), 3),
+               "trustworthiness": round(trust, 4), "rho_dist_full": round(float(spearmanr(d, full_d)[0]), 3),
                "rho_sim_full": round(float(spearmanr(s, full_s)[0]), 3), "accuracy": round(acc, 3),
                "partial_r_sim": pr_s, "p_sim": pp_s, "gap_sim_sd": gap_s, "gap_sim_p": round(gp_s, 3),
                "partial_r_negdist": pr_d, "p_negdist": pp_d, "gap_negdist_sd": gap_d, "gap_negdist_p": round(gp_d, 3),
-               "cv_r2_adjusted_llm": round(float(r2), 3)}
+               "cv_r2_adjusted_llm": round(float(r2), 4)}
         res.append(row); print({k: v for k, v in row.items() if not k.startswith("p_")}, flush=True)
 out = pd.DataFrame(res); out.to_csv("outputs/paper_v2/reduction_compare_v2.csv", index=False)
 print(out.drop(columns=["p_sim", "p_negdist"]).to_string(index=False))

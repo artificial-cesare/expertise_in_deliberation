@@ -24,6 +24,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paper_v2_stats import load, residual
+from hearing_roles import expert_corpus
 from scipy.stats import pearsonr
 
 ap = argparse.ArgumentParser()
@@ -33,10 +34,9 @@ args = ap.parse_args()
 OUT = Path("outputs/paper_v2/embedding_check"); OUT.mkdir(parents=True, exist_ok=True)
 TOPIC = {"Constitutional Reform": "constitution", "Gender Equality": "gender", "Public Policy": "future"}
 MODEL = {"base": "Qwen/Qwen3-Embedding-0.6B", "finetuned": "models/qwen3_expert_contrastive_final/best_model"}
-# centroids and k from reproduce/centroids_v2.py (expert corpus without the duplicated gender hearing)
+# centroids and k from reproduce/centroids_v2.py (witnesses' turns, without the duplicated gender hearing)
 CV2 = Path("outputs/paper_v2/centroids_v2")
 K = {m: v["k"] for m, v in json.loads((CV2 / "metrics.json").read_text()).items()}
-DUPLICATE = ("gender", "committees.parliament.uk_speeches.csv")  # copy of committees.parliament.uk5
 
 D = load()  # stored values, ageing included, are recomputed and checked below
 S = D[D.num_non_function_words >= 5].reset_index(drop=True)
@@ -44,15 +44,10 @@ S = D[D.num_non_function_words >= 5].reset_index(drop=True)
 # like the Eighth Amendment session (no hearings on the ageing population exist).
 AGE = (S.folder == "ageing_population").values
 S["topic"] = S.assembly.map(TOPIC)
-ex = []
-for topic in ("constitution", "future", "gender"):
-    for f in sorted(Path(f"data/assemblies/processed_files/experts/{topic}").glob("*_speeches.csv")):
-        d = pd.read_csv(f)
-        d = d[(d.num_non_function_words >= 5) & d.text.notna()]
-        ex += [(topic, f.name, str(t).strip()) for t in d.text if str(t).strip()]
-E_keep = np.array([(t, f) != DUPLICATE for t, f, _ in ex])  # the cache holds all 1,667; the duplicate is masked out
-E_topic = np.array([t for t, _, _ in ex])[E_keep]; E_text = [x for _, _, x in ex]
-print("experts:", pd.Series(E_topic).value_counts().to_dict(), "(duplicate removed) | assembly:", len(S), flush=True)
+E = expert_corpus()  # the cache holds all 1,667 hearing utterances; the reference is the witnesses' turns
+E_keep = ((E.role == "witness") & ~E.duplicate).values  # chairs, committee members and the duplicate hearing masked out
+E_topic = E.topic.values[E_keep]; E_text = [str(t).strip() for t in E.text]
+print("experts:", pd.Series(E_topic).value_counts().to_dict(), "(witnesses, duplicate removed) | assembly:", len(S), flush=True)
 
 def embed(name, which, texts):
     p = OUT / f"{name}_{which}.npy"

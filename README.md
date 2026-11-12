@@ -131,6 +131,16 @@ The features in the CSVs were computed by `code/handcrafted_features/new_feats_e
   file identical to `committees.parliament.uk5.html`. `reproduce/centroids_v2.py` refits the PCA and k-means without it
   (it reproduces the stored models to 1e-6 when the copy is kept) and writes `outputs/paper_v2/embeddings_v2.csv`;
   the fine-tuned model was trained with the copy included.
+- **Expert reference = the witnesses' turns.** The hearing transcripts also hold the turns of the committee members who
+  question the witnesses and of the chair. `reproduce/hearing_roles.py` labels every hearing speaker (witnesses from
+  the list at the head of each official report) and `centroids_v2.py`, `embedding_space_check.py`,
+  `latent_figures_v2.py` and `reduction_compare_v2.py` use only the witnesses' turns (822 of the 1,563 deduplicated
+  utterances); the fine-tuned model was trained on all turns. Results with all turns are kept in
+  `outputs/paper_v2/_all_hearing_turns_2026-11-12/`. `reproduce/expert_settings_v2.py` compares assembly experts,
+  citizens, witnesses and committee members (LLM score, ArgQA, disfluencies).
+- **Topic-subtracted embeddings** (`reproduce/style_contrast_v2.py`, exploratory): each utterance minus the
+  speaker-balanced mean of its own hearing or transcript, in the full space, then PCA-100 and k-means on the witnesses
+  as in the main analysis; with topic-removal, validity and topic-specificity checks.
 - **Ageing session rescored.** It was first scored with the Eighth Amendment topic string;
   `reproduce/rescore_ageing.py` rescored it with its own topic into `outputs/paper_v2/llm_v2.csv`.
   `paper_v2_stats.load()` merges both files over the stored CSV columns (originals kept as `*_v1`); the data CSVs are unchanged.

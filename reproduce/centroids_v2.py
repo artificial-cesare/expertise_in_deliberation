@@ -1,8 +1,14 @@
-"""Expert centroids, distances and similarities without the duplicated gender hearing (2026-11-12).
+"""Expert centroids, distances and similarities from the witnesses' turns only (2026-11-12).
 
-data/assemblies/processed_files/experts/gender/committees.parliament.uk_speeches.csv was processed from an HTML file
-byte-identical to committees.parliament.uk5.html, so that hearing entered the expert corpus twice (104 of 1,667
-expert utterances). This script repeats the pipeline of code/embeddings/k_means_exp.py without it:
+The expert reference is restricted in two ways (see reproduce/hearing_roles.py):
+  - data/assemblies/processed_files/experts/gender/committees.parliament.uk_speeches.csv was processed from an HTML
+    file byte-identical to committees.parliament.uk5.html, so that hearing entered the expert corpus twice (104 of
+    1,667 expert utterances); the copy is dropped;
+  - the hearings also hold the turns of the chairs and of the committee members who question the witnesses; only the
+    witnesses' turns are kept (822 of the 1,563 utterances of the deduplicated hearings).
+The previous versions (all turns of the deduplicated hearings; all turns with the duplicate) are kept in
+outputs/paper_v2/_all_hearing_turns_2026-11-12/ and _with_duplicate_2026-11-12/. This script repeats the pipeline of
+code/embeddings/k_means_exp.py on the witnesses' turns:
 
   1. global PCA (100 components, random_state 42) fitted on all expert embeddings;
   2. k-means per topic (n_init 10, random_state 42) for every k in {2, 3, 4}^3; the combination with the highest
@@ -11,7 +17,7 @@ expert utterances). This script repeats the pipeline of code/embeddings/k_means_
      and cosine similarity to that same centroid (the stored distance_*/similarity_* columns);
   4. Table 4 metrics: expert accuracy (global, per topic), mean silhouette, assembly cross-topic accuracy.
 
-With the duplicate included, this reproduces the stored PCA and centroids to 1e-6 (checked below).
+With all turns and the duplicate included, this reproduces the stored PCA and centroids to 1e-6 (checked below).
 Embeddings are the cached ones of reproduce/embedding_space_check.py (same models and settings).
 Outputs: outputs/paper_v2/centroids_v2/{base,finetuned}/ and outputs/paper_v2/embeddings_v2.csv, which
 paper_v2_stats.load() merges over the stored columns.
@@ -27,21 +33,15 @@ from sklearn.metrics import silhouette_score
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paper_v2_stats import load
+from hearing_roles import expert_corpus
 
-DUPLICATE = ("gender", "committees.parliament.uk_speeches.csv")  # copy of committees.parliament.uk5
 TOPICS = ["constitution", "future", "gender"]
 TOPIC_OF = {"Constitutional Reform": "constitution", "Gender Equality": "gender", "Public Policy": "future"}
 CACHE = Path("outputs/paper_v2/embedding_check")
 OUT = Path("outputs/paper_v2/centroids_v2")
 
-ex = []
-for topic in TOPICS:
-    for f in sorted(Path(f"data/assemblies/processed_files/experts/{topic}").glob("*_speeches.csv")):
-        d = pd.read_csv(f)
-        d = d[(d.num_non_function_words >= 5) & d.text.notna()]
-        ex += [(topic, f.name) for t in d.text if str(t).strip()]
-E = pd.DataFrame(ex, columns=["topic", "file"])
-keep = ~((E.topic == DUPLICATE[0]) & (E.file == DUPLICATE[1])).values
+E = expert_corpus()
+keep = ((E.role == "witness") & ~E.duplicate).values  # witnesses' turns, duplicate hearing dropped
 
 D = load(include_ageing_embeddings=True, embeddings="stored")
 S = D[D.num_non_function_words >= 5].reset_index(drop=True)
@@ -81,7 +81,7 @@ for name in ("base", "finetuned"):
     pca_s, C_s = joblib.load(stored / f"pca_model_{name}.pkl"), np.load(stored / f"centroids_100d_{name}.npy")
     pca_chk, best_chk = fit(Xe_all, E.topic.values)
     dev = float(euclidean_distances(pca_chk.inverse_transform(best_chk["C"]), pca_s.inverse_transform(C_s)).min(1).max())
-    print(f"{name}: with duplicate k={best_chk['k']} acc={best_chk['acc']:.3f}; max centroid deviation from stored = {dev:.1e}")
+    print(f"{name}: all turns with duplicate k={best_chk['k']} acc={best_chk['acc']:.3f}; max centroid deviation from stored = {dev:.1e}")
 
     pca, best = fit(Xe_all[keep], E.topic.values[keep])
     Za = pca.transform(Xa)
@@ -105,12 +105,12 @@ for name in ("base", "finetuned"):
                      "per_topic_expert_accuracy": {t: round(v, 4) for t, v in best["per_topic"].items()},
                      "mean_silhouette": round(best["sil"], 4), "assembly_accuracy": by,
                      "assembly_weighted_average": round(float(hit.mean()), 4),
-                     "check_with_duplicate": {"k": best_chk["k"], "expert_accuracy": round(best_chk["acc"], 4),
+                     "check_all_turns_with_duplicate": {"k": best_chk["k"], "expert_accuracy": round(best_chk["acc"], 4),
                                               "max_centroid_deviation_from_stored": dev}}
     od = OUT / name; od.mkdir(parents=True, exist_ok=True)
     joblib.dump(pca, od / "pca.pkl"); np.save(od / "centroids_100d.npy", best["C"]); joblib.dump(list(best["labels"]), od / "centroid_labels.pkl")
     old_d, old_s = S[f"distance_{name}"].values, S[f"similarity_{name}"].values
-    print(f"{name}: without duplicate ({keep.sum()} experts) k={best['k']} acc={best['acc']:.3f} sil={best['sil']:.4f} "
+    print(f"{name}: witnesses only ({keep.sum()} utterances) k={best['k']} acc={best['acc']:.3f} sil={best['sil']:.4f} "
           f"assembly acc={hit.mean():.3f} | r(new, old) distance={np.corrcoef(dist, old_d)[0,1]:.3f} similarity={np.corrcoef(sim, old_s)[0,1]:.3f}")
 
 pd.DataFrame(rows).to_csv("outputs/paper_v2/embeddings_v2.csv", index=False)

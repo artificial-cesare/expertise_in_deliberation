@@ -1,9 +1,10 @@
 """Figures 1-2 (revised, 2026-11-12): UMAP views of the expert and assembly embeddings.
 
 Same procedure as code/embeddings/k_means_exp.generate_plots and the same drawing code (plotting.generate_plots),
-with the revised inputs: PCA and centroids from reproduce/centroids_v2.py (no duplicated gender hearing), the ageing
+with the revised inputs: PCA and centroids from reproduce/centroids_v2.py (witnesses' turns only, no duplicated
+gender hearing), the ageing
 session included with the constitutional-reform assembly, and the cached embeddings of embedding_space_check.py.
-A 2-d UMAP (random_state 42) is fitted on all expert utterances, up to 300 sampled utterances per assembly
+A 2-d UMAP (random_state 42) is fitted on all expert (witness) utterances, up to 300 sampled utterances per assembly
 transcript folder and the centroids, all in the 100-d PCA space; the old pickled UMAP was fitted in the old PCA space
 and cannot be reused, so the layout differs from the published figures.
 
@@ -20,17 +21,13 @@ sys.path[:0] = [str(Path("code/embeddings").resolve()), str(Path("code/handcraft
                 str(Path(__file__).resolve().parent)]
 import plotting  # noqa: E402  (reads THESIS_ROOT at import)
 from paper_v2_stats import load  # noqa: E402
+from hearing_roles import expert_corpus  # noqa: E402
 
 CACHE, CV2 = Path("outputs/paper_v2/embedding_check"), Path("outputs/paper_v2/centroids_v2")
-DUPLICATE = ("gender", "committees.parliament.uk_speeches.csv")
 FOLDER_TOPIC = {"8th_amendment": "constitution", "ageing_population": "constitution", "gendereq": "gender", "scotland": "future"}
 
-ex = []
-for topic in ("constitution", "future", "gender"):
-    for f in sorted(Path(f"data/assemblies/processed_files/experts/{topic}").glob("*_speeches.csv")):
-        d = pd.read_csv(f); d = d[(d.num_non_function_words >= 5) & d.text.notna()]
-        ex += [(topic, f.name) for t in d.text if str(t).strip()]
-keep = np.array([x != DUPLICATE for x in ex]); E_topic = np.array([t for t, _ in ex])[keep]
+E = expert_corpus()  # cache order; reference = witnesses' turns, duplicate hearing dropped
+keep = ((E.role == "witness") & ~E.duplicate).values; E_topic = E.topic.values[keep]
 D = load(); S = D[D.num_non_function_words >= 5].reset_index(drop=True); AGE = (S.folder == "ageing_population").values
 
 for name in ("base", "finetuned"):
