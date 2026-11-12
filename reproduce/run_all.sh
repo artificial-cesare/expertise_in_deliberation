@@ -14,10 +14,12 @@ shasum -a 256 -c --quiet data/CHECKSUMS.sha256   # the data is the frozen versio
 mkdir -p outputs/validation
 "$PY" code/validation/kappa_filtered_new.py --json-path data/validation/sampled_speeches.json \
     --csv-dir data/validation/annotations_csv --output outputs/validation/kappa_results.json
-# Figs 3-4, Appendix B and C: as published, then with Scotland's LLM scores
-"$PY" reproduce/correlations.py --scotland-llm drop
+# Figs 3-4, Appendix B and C: as published (Overleaf, > 5 content words, no Scotland LLM scores),
+# then >= 5 content words with Scotland's LLM scores
+"$PY" reproduce/correlations.py --scotland-llm drop --legacy-gt5
 "$PY" reproduce/correlations.py --scotland-llm keep
-# Section 5.4, Table 7
+# Section 5.4, Table 7: as published (no filter), then >= 5 content words
+"$PY" reproduce/temporal_kw.py --min-words 0
 "$PY" reproduce/temporal_kw.py
 
 shasum -a 256 -c --quiet data/CHECKSUMS.sha256   # nothing above rewrote the data

@@ -1,13 +1,16 @@
 """Rebuild the correlation heatmaps (Figs 3-4, Appendix B) and temporal plots (Appendix C).
 
 Uses the thesis-era ComprehensiveCorrelationAnalyzer (reproduce/paper_corr.py) with
-the paper's settings: assemblies only, all three assemblies, >5 content words, global z-score.
+the paper's settings: assemblies only, all three assemblies, >= 5 content words, global z-score.
 
---scotland-llm drop   reproduces the published figures. They were made before Scotland had
+--legacy-gt5          keep > 5 content words instead, as the published (Overleaf, 2026-11-01) figures did.
+                      Use it together with --scotland-llm drop to rebuild those figures exactly.
+
+--scotland-llm drop   (with --legacy-gt5) reproduces the published figures. They were made before Scotland had
                       LLM scores, so every LLM-score cell there uses the Irish assemblies only.
 --scotland-llm keep   (default) uses Scotland's LLM scores too.
 
-Run from the repo root:  python reproduce/correlations.py [--scotland-llm drop]
+Run from the repo root:  python reproduce/correlations.py [--scotland-llm drop] [--legacy-gt5]
 """
 import argparse
 import contextlib
@@ -24,9 +27,9 @@ from paper_corr import ComprehensiveCorrelationAnalyzer  # noqa: E402
 LLM = "Expertise Llm Score"
 
 
-def load_assemblies(data_dir: Path, scotland_llm: str) -> tuple[ComprehensiveCorrelationAnalyzer, pd.DataFrame]:
+def load_assemblies(data_dir: Path, scotland_llm: str, legacy_gt5: bool = False) -> tuple[ComprehensiveCorrelationAnalyzer, pd.DataFrame]:
     a = ComprehensiveCorrelationAnalyzer(base_dir=data_dir, norm_type="global", scaler_type="zscore",
-                                         include_scotland="yes")
+                                         include_scotland="yes", legacy_gt5=legacy_gt5)
     with contextlib.redirect_stdout(io.StringIO()):
         data = a.load_and_combine_data(a.assemblies_path, a.assembly_topics)
     if scotland_llm == "drop":
@@ -34,9 +37,9 @@ def load_assemblies(data_dir: Path, scotland_llm: str) -> tuple[ComprehensiveCor
     return a, pd.concat(list(data.values()), ignore_index=True)
 
 
-def assembly_correlations(data_dir: Path, scotland_llm: str, model: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+def assembly_correlations(data_dir: Path, scotland_llm: str, model: str, legacy_gt5: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Pearson r and p-value matrices, as in the paper's heatmaps."""
-    a, df = load_assemblies(data_dir, scotland_llm)
+    a, df = load_assemblies(data_dir, scotland_llm, legacy_gt5)
     feats = a.get_dynamic_features(df, model)
     with contextlib.redirect_stdout(io.StringIO()):
         return a.compute_correlations(a.normalize_features(df, feats), feats)
@@ -48,13 +51,14 @@ def main() -> None:
     ap.add_argument("--data-dir", type=Path, default=Path("data/assemblies/processed_files"))
     ap.add_argument("--out-dir", type=Path, default=Path("outputs/correlations"))
     ap.add_argument("--no-temporal", action="store_true", help="skip the Appendix C plots")
+    ap.add_argument("--legacy-gt5", action="store_true", help="> 5 content words, as the published figures")
     args = ap.parse_args()
 
-    a, df = load_assemblies(args.data_dir, args.scotland_llm)
+    a, df = load_assemblies(args.data_dir, args.scotland_llm, args.legacy_gt5)
     n_llm = int(df["expertise_llm_score"].notna().sum())
     print(f"n = {len(df)} utterances, {n_llm} with an LLM score (scotland-llm={args.scotland_llm})")
     for model in ("base", "finetuned"):
-        out = args.out_dir / f"scotland_llm_{args.scotland_llm}" / model
+        out = args.out_dir / f"scotland_llm_{args.scotland_llm}{'_gt5' if args.legacy_gt5 else ''}" / model
         out.mkdir(parents=True, exist_ok=True)
         feats = a.get_dynamic_features(df, model)
         title = f"Assemblies - {model.title()} Model"

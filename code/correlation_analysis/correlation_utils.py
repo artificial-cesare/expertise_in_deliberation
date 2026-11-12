@@ -46,11 +46,11 @@ def filter_syntactically_relevant(
     threshold: int = 5,
 ) -> pd.DataFrame:
     """
-    Keep only rows with strictly more than *threshold* non-function words.
+    Keep only rows with at least *threshold* non-function words (>= threshold).
 
     Args:
         df: DataFrame containing a 'num_non_function_words' column.
-        threshold: Minimum content-word count (exclusive lower bound).
+        threshold: Minimum content-word count (inclusive lower bound).
 
     Returns:
         Filtered copy of df.  If the column is absent, df is returned
@@ -65,9 +65,9 @@ def filter_syntactically_relevant(
     df['num_non_function_words'] = pd.to_numeric(
         df['num_non_function_words'], errors='coerce'
     )
-    filtered = df[df['num_non_function_words'] > threshold].copy()
+    filtered = df[df['num_non_function_words'] >= threshold].copy()
     removed = original - len(filtered)
-    print(f"   ✓ Filtered (threshold={threshold}): {len(filtered)} rows kept ({removed} removed)")
+    print(f"   ✓ Filtered (>= {threshold} content words): {len(filtered)} rows kept ({removed} removed)")
     return filtered
 
 

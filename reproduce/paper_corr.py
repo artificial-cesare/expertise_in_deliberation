@@ -45,7 +45,7 @@ warnings.filterwarnings('ignore')
 class ComprehensiveCorrelationAnalyzer:
     def __init__(self, base_dir: Path = Path('data/assemblies/processed_files'),
                  norm_type: str = 'global', scaler_type: str = 'zscore', 
-                 include_scotland: str = 'yes'):
+                 include_scotland: str = 'yes', min_content_words: int = 5, legacy_gt5: bool = False):
         """
         Initialize analyzer.
         """
@@ -55,6 +55,9 @@ class ComprehensiveCorrelationAnalyzer:
         self.norm_type = norm_type
         self.scaler_type = scaler_type
         self.include_scotland = include_scotland
+        self.min_content_words = min_content_words
+        # The published (Overleaf, 2026-11-01) figures kept > 5 content words; legacy_gt5=True rebuilds them.
+        self.legacy_gt5 = legacy_gt5
         
         # COLUMNS TO IGNORE during dynamic extraction
         self.excluded_columns = [
@@ -85,14 +88,17 @@ class ComprehensiveCorrelationAnalyzer:
         }
         
     def filter_syntactically_relevant(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Filter to speeches with >5 non-function words."""
+        """Keep speeches with >= min_content_words non-function words (> 5 with legacy_gt5)."""
         if 'num_non_function_words' not in df.columns:
             print("   ⚠️  'num_non_function_words' not found, no filtering applied")
             return df
         
         original = len(df)
         df['num_non_function_words'] = pd.to_numeric(df['num_non_function_words'], errors='coerce')
-        filtered = df[df['num_non_function_words'] > 5].copy()
+        if self.legacy_gt5:
+            filtered = df[df['num_non_function_words'] > 5].copy()
+        else:
+            filtered = df[df['num_non_function_words'] >= self.min_content_words].copy()
         removed = original - len(filtered)
         
         print(f"   ✓ Filtered: {len(filtered)} rows kept ({removed} removed)")

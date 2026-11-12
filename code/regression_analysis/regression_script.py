@@ -109,7 +109,7 @@ def main():
     # Load and combine data
     log(f"\n{'='*80}")
     log(f"REGRESSION ANALYSIS: {args.dataset.upper()} - {args.model_type.upper()}")
-    log(f"Threshold: >{args.threshold} non-function words")
+    log(f"Threshold: >={args.threshold} non-function words")
     log(f"{'='*80}\n")
     
     base_path = Path(args.data_dir)
@@ -146,8 +146,8 @@ def main():
     # Filter by content word threshold
     if 'num_non_function_words' in df.columns:
         df['num_non_function_words'] = pd.to_numeric(df['num_non_function_words'], errors='coerce')
-        df = df[df['num_non_function_words'] > args.threshold].copy()
-        log(f"After filtering: {len(df)} rows (>{args.threshold} content words)")
+        df = df[df['num_non_function_words'] >= args.threshold].copy()
+        log(f"After filtering: {len(df)} rows (>={args.threshold} content words)")
     
     # Extract target
     if args.target not in df.columns:

@@ -375,7 +375,7 @@ class ComprehensiveCorrelationAnalyzer:
             f.write(f"{title}\n")
             f.write("=" * 80 + "\n\n")
             f.write(f"Analysis includes {len(corr_df)} features\n")
-            f.write(f"Content word threshold: >{self.content_word_threshold} non-function words\n")
+            f.write(f"Content word threshold: >={self.content_word_threshold} non-function words\n")
             f.write(f"Features scaling: {self.norm_type} scope, feature-specific scalers\n")
             f.write("  - No scaling: jargon/lexical/syntactic density, MRC features, epistemic_balance\n")
             f.write("  - MinMax: hedge_density, booster_density\n")

@@ -65,7 +65,7 @@ def predict(dataloader, model, out_put_path, task2label, dataset, task, device):
             "Please run feature extraction first."
         )
     
-    # Filter: only update rows where num_non_function_words > 5
+    # Filter: only update rows where num_non_function_words >= 5
     valid_mask = original_df.loc[scored_indices, "num_non_function_words"] >= 5
     valid_indices = [idx for idx, is_valid in zip(scored_indices, valid_mask) if is_valid]
     valid_scores = [score for score, is_valid in zip(output_dic[0], valid_mask) if is_valid]
@@ -73,9 +73,9 @@ def predict(dataloader, model, out_put_path, task2label, dataset, task, device):
     n_valid = len(valid_indices)
     n_filtered = n_scored - n_valid
     
-    print(f"  → Filtering based on num_non_function_words > 5:")
+    print(f"  → Filtering based on num_non_function_words >= 5:")
     print(f"     • Scored rows: {n_scored}")
-    print(f"     • Valid rows (>5 content words): {n_valid}")
+    print(f"     • Valid rows (>=5 content words): {n_valid}")
     print(f"     • Filtered out: {n_filtered}")
     
     # Update only the valid rows

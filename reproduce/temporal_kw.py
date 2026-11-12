@@ -4,10 +4,10 @@ Each transcript is split into thirds by row order (start / middle / end), the th
 pooled per assembly, and a Kruskal-Wallis test compares them; epsilon^2 = H / (n - 1).
 Windows are set before any filtering, so they always reflect position in the session.
 
-The published values use no content-word filter (--min-words 0, the default), although the
-paper says >=5 content words throughout. Pass --min-words 5 to apply that filter.
+Keeps utterances with >= --min-words content words (default 5, as everywhere in the paper).
+The published (Overleaf, 2026-11-01) values used no filter: --min-words 0 rebuilds them.
 
-Run from the repo root:  python reproduce/temporal_kw.py [--min-words 5]
+Run from the repo root:  python reproduce/temporal_kw.py [--min-words 0]
 """
 import argparse
 import sys
@@ -56,7 +56,7 @@ def features(df: pd.DataFrame) -> list[str]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--min-words", type=int, default=0, help="keep utterances with >= this many content words")
+    ap.add_argument("--min-words", type=int, default=5, help="keep utterances with >= this many content words")
     ap.add_argument("--data-dir", type=Path, default=Path("data/assemblies/processed_files"))
     ap.add_argument("--out-dir", type=Path, default=Path("outputs/temporal"))
     args = ap.parse_args()
