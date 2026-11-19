@@ -13,7 +13,7 @@
    For each: assembly cross-topic accuracy, correlation with the LLM score (raw and at equal length and assembly),
    and a known-groups check (expert witnesses vs citizens in the constitutional-reform session, at equal length).
 
-The ageing-population voting session is included (constitutional hearings as its expert reference).
+The ageing-population voting session is left out (paper_v2_stats.load(), since 2026-11-19).
 Run from the repo root (CL env):  python reproduce/embedding_space_check.py [--device mps]
 Embeddings are cached in outputs/paper_v2/embedding_check/.
 """
@@ -38,7 +38,7 @@ MODEL = {"base": "Qwen/Qwen3-Embedding-0.6B", "finetuned": "models/qwen3_expert_
 CV2 = Path("outputs/paper_v2/centroids_v2")
 K = {m: v["k"] for m, v in json.loads((CV2 / "metrics.json").read_text()).items()}
 
-D = load()  # stored values, ageing included, are recomputed and checked below
+D = load()  # stored values are recomputed and checked below (ageing session left out)
 S = D[D.num_non_function_words >= 5].reset_index(drop=True)
 # The ageing voting session belongs to the Irish 2016-18 assembly: compared with the constitutional hearings,
 # like the Eighth Amendment session (no hearings on the ageing population exist).
@@ -77,7 +77,7 @@ def stats(score, label):
     from scipy.stats import t as tdist
     gap_p = float(2 * tdist.sf(abs(b[2] / se), len(c) - 3))
     within = {a: round(pearsonr(g.m, g.expertise_llm_score)[0], 3) for a, g in s.groupby("assembly")}
-    return {"measure": label, "r_llm": round(r, 3), "p": float(p), "partial_r_llm": round(pr, 3), "partial_p": float(pp),
+    return {"measure": label, "r_llm": round(r, 4), "p": float(p), "partial_r_llm": round(pr, 4), "partial_p": float(pp),
             "within_assembly_r": within, "expert_vs_citizen_gap_sd_equal_length": round(float(gap), 2), "gap_p": round(gap_p, 4)}
 
 res = {}
@@ -86,8 +86,8 @@ for name in args.models:
     Xe = embed(name, "experts", E_text)[E_keep]
     # cached embeddings of the 3,413 non-ageing utterances (same order) + the ageing session
     Xn = embed(name, "assembly", list(S.text[~AGE].astype(str)))
-    Xg = embed(name, "assembly_ageing", list(S.text[AGE].astype(str)))
-    Xa = np.zeros((len(S), Xn.shape[1]), dtype=Xn.dtype); Xa[~AGE] = Xn; Xa[AGE] = Xg
+    Xa = np.zeros((len(S), Xn.shape[1]), dtype=Xn.dtype); Xa[~AGE] = Xn
+    if AGE.any(): Xa[AGE] = embed(name, "assembly_ageing", list(S.text[AGE].astype(str)))  # only with load(include_ageing=True)
     R = {"measures": []}
     # ---- 1. PCA (paper) ------------------------------------------------------------------------
     pca = joblib.load(CV2 / name / "pca.pkl"); C = np.load(CV2 / name / "centroids_100d.npy")
@@ -99,9 +99,10 @@ for name in args.models:
         dist[i] = dd.min(1); sim[i] = cosine_similarity(Za[i], Ct)[np.arange(i.sum()), j]
     R["check_stored"] = {"distance_r": round(pearsonr(dist, S[f"distance_{name}"])[0], 4),
                          "distance_max_abs_diff": round(float(np.nanmax(np.abs(dist - S[f"distance_{name}"]))), 4),
-                         "similarity_r": round(pearsonr(sim, S[f"similarity_{name}"])[0], 4),
-                         "ageing_distance_max_abs_diff": round(float(np.nanmax(np.abs(dist[AGE] - S[f"distance_{name}"].values[AGE]))), 4),
-                         "ageing_similarity_max_abs_diff": round(float(np.nanmax(np.abs(sim[AGE] - S[f"similarity_{name}"].values[AGE]))), 4)}
+                         "similarity_r": round(pearsonr(sim, S[f"similarity_{name}"])[0], 4)}
+    if AGE.any():
+        R["check_stored"].update({"ageing_distance_max_abs_diff": round(float(np.nanmax(np.abs(dist[AGE] - S[f"distance_{name}"].values[AGE]))), 4),
+                                  "ageing_similarity_max_abs_diff": round(float(np.nanmax(np.abs(sim[AGE] - S[f"similarity_{name}"].values[AGE]))), 4)})
     acc = np.mean(labels[euclidean_distances(Za, C).argmin(1)] == S.topic.values)
     R["measures"].append({**stats(S[f"similarity_{name}"].values, "PCA-100 centroid similarity (paper)"), "assembly_accuracy": round(acc, 3)})
     R["measures"].append(stats(-S[f"distance_{name}"].values, "PCA-100 centroid distance (paper, negated)"))

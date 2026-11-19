@@ -121,7 +121,8 @@ res, per_utt = {}, {"file": S.file, "row": S.row}
 for name in ("base", "finetuned"):
     Xall = np.load(CACHE / f"{name}_experts.npy"); Xe = Xall[E["index"].values]
     Xa = np.zeros((len(S), Xall.shape[1]), dtype=Xall.dtype)
-    Xa[~AGE] = np.load(CACHE / f"{name}_assembly.npy"); Xa[AGE] = np.load(CACHE / f"{name}_assembly_ageing.npy")
+    Xa[~AGE] = np.load(CACHE / f"{name}_assembly.npy")
+    if AGE.any(): Xa[AGE] = np.load(CACHE / f"{name}_assembly_ageing.npy")  # ageing session, only with load(include_ageing=True)
     Xe_c = centre(Xe, E.hearing.values, E.speaker.values)[W]          # witnesses relative to their hearing
     Xa_c = centre(Xa, S.file.values, S.speaker.astype(str).values)   # utterances relative to their transcript
     Wt = E_topic[W]; R = {"measures": []}

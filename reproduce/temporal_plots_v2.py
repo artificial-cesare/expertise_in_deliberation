@@ -17,8 +17,8 @@ from paper_v2_stats import load
 
 FEATURES = {"expertise_llm_score": "LLM expertise score (1–5)", "overall_score": "ArgQA overall score",
             "lexical_sophistication": "Lexical sophistication", "similarity_finetuned": "Similarity to expert centroid (fine-tuned)",
-            "similarity_base": "Similarity to expert centroid (base)", "distance_base": "Distance to expert centroid (base)",
-            "length_tokens": "Utterance length (tokens)",
+            "similarity_base": "Similarity to expert centroid (base)", "distance_finetuned": "Distance to expert centroid (fine-tuned)",
+            "length_tokens": "Utterance length (tokens)", "num_non_function_words": "Non-function words",
             "specificity_length_norm": "Normalised length", "specificity_content_prop": "Content-word proportion",
             "specificity_numbers_norm": "Numerical specificity"}
 ASSEMBLIES = ["Constitutional Reform", "Gender Equality", "Public Policy"]

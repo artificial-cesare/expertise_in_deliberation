@@ -2,8 +2,8 @@
 
 Same procedure as code/embeddings/k_means_exp.generate_plots and the same drawing code (plotting.generate_plots),
 with the revised inputs: PCA and centroids from reproduce/centroids_v2.py (witnesses' turns only, no duplicated
-gender hearing), the ageing
-session included with the constitutional-reform assembly, and the cached embeddings of embedding_space_check.py.
+gender hearing), the ageing-population voting session left out (since 2026-11-19), and the cached embeddings of
+embedding_space_check.py.
 A 2-d UMAP (random_state 42) is fitted on all expert (witness) utterances, up to 300 sampled utterances per assembly
 transcript folder and the centroids, all in the 100-d PCA space; the old pickled UMAP was fitted in the old PCA space
 and cannot be reused, so the layout differs from the published figures.
@@ -29,11 +29,13 @@ FOLDER_TOPIC = {"8th_amendment": "constitution", "ageing_population": "constitut
 E = expert_corpus()  # cache order; reference = witnesses' turns, duplicate hearing dropped
 keep = ((E.role == "witness") & ~E.duplicate).values; E_topic = E.topic.values[keep]
 D = load(); S = D[D.num_non_function_words >= 5].reset_index(drop=True); AGE = (S.folder == "ageing_population").values
+FOLDER_TOPIC = {f: t for f, t in FOLDER_TOPIC.items() if (S.folder == f).any()}  # the ageing folder only with load(include_ageing=True)
 
 for name in ("base", "finetuned"):
     Xe = np.load(CACHE / f"{name}_experts.npy")[keep]
     Xa = np.zeros((len(S), Xe.shape[1]), dtype=Xe.dtype)
-    Xa[~AGE] = np.load(CACHE / f"{name}_assembly.npy"); Xa[AGE] = np.load(CACHE / f"{name}_assembly_ageing.npy")
+    Xa[~AGE] = np.load(CACHE / f"{name}_assembly.npy")
+    if AGE.any(): Xa[AGE] = np.load(CACHE / f"{name}_assembly_ageing.npy")  # ageing session, only with load(include_ageing=True)
     pca = joblib.load(CV2 / name / "pca.pkl"); C = np.load(CV2 / name / "centroids_100d.npy")
     labels = list(joblib.load(CV2 / name / "centroid_labels.pkl"))
     rng = np.random.RandomState(42)

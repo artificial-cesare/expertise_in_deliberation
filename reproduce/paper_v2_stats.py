@@ -1,10 +1,11 @@
 """Every statistic quoted in the revised paper, on the revised corpus.
 
-Revised corpus: the Irish 2016-18 assembly ("Constitutional Reform") has two transcripts, the final weekend
-on the Eighth Amendment and a voting session on the ageing population
-(data/assemblies/processed_files/ageing_population/). There are no expert hearings on the ageing population; like
-the Eighth Amendment session, its embedding distances/similarities are computed against the constitutional hearings
-(2026-11-12; until then they were set to NaN). It enters every analysis. All three assemblies' LLM scores are used.
+Revised corpus (2026-11-19): the Irish 2016-18 assembly ("Constitutional Reform") is the final weekend on the Eighth
+Amendment only. The assembly's voting session on the ageing population (data/assemblies/processed_files/ageing_population/)
+is left out of every analysis: it is a voting session on a different topic, most of its speakers are the chair,
+facilitators or speakers of unrecorded role, and no expert hearings on the ageing population exist.
+load(include_ageing=True) brings it back, as part of "Constitutional Reform" (the corpus of 2026-11-12 to 2026-11-19).
+All three assemblies' LLM scores are used.
 Substantial utterances: >= 5 content words everywhere ("gt5" results are kept for comparison only).
 lexical_sophistication and evidential_markers are the corrected v2 columns from
 outputs/paper_v2/features_v2.csv (run reproduce/features_v2.py first); the originals are kept as *_v1.
@@ -20,7 +21,7 @@ from sklearn.metrics import cohen_kappa_score
 
 ROOT = Path("data/assemblies/processed_files")
 ASM = {"8th_amendment": "Constitutional Reform", "gendereq": "Gender Equality", "scotland": "Public Policy"}
-FOLDERS = {**ASM, "ageing_population": "Constitutional Reform"}  # ageing session: same 2016-18 Irish assembly
+AGEING = {"ageing_population": "Constitutional Reform"}  # ageing voting session: only with load(include_ageing=True)
 EMB = ["distance_base", "similarity_base", "distance_finetuned", "similarity_finetuned"]
 FEATS = ["jargon_density", "lexical_sophistication", "syntactic_complexity", "reasoning_markers", "evidential_markers",
          "length_tokens", "num_non_function_words", "hedge_density", "booster_density", "epistemic_balance",
@@ -46,15 +47,16 @@ ROLE_GROUP = {"expert": "expert", "participant": "participant", "chair": "facili
               "secretariat": "facilitation", "rapporteur": "rapporteur", "unknown": "unknown"}
 
 
-def load(include_ageing_embeddings: bool = True, embeddings: str = "v2", llm: str = "v2") -> pd.DataFrame:
-    """include_ageing_embeddings: keep the ageing session's embedding columns (distance/similarity to the
+def load(include_ageing_embeddings: bool = True, embeddings: str = "v2", llm: str = "v2", include_ageing: bool = False) -> pd.DataFrame:
+    """include_ageing: add the ageing-population voting session to Constitutional Reform (default False: left out).
+    include_ageing_embeddings: keep the ageing session's embedding columns (distance/similarity to the
     constitutional hearings, checked in embedding_space_check.py); False sets them to NaN (2026-11-03 analyses).
     embeddings="v2": distance/similarity from reproduce/centroids_v2.py (expert corpus without the duplicated gender
     hearing), stored columns kept as *_v1; "stored": the columns in the CSVs.
     llm="v2": LLM scores from outputs/paper_v2/llm_v2.csv where present (the ageing session rescored with its own
     topic, reproduce/rescore_ageing.py), stored scores kept as expertise_llm_score_v1; "stored": the CSV scores."""
     parts = []
-    for folder, name in FOLDERS.items():
+    for folder, name in ({**ASM, **AGEING} if include_ageing else ASM).items():
         for f in sorted((ROOT / folder).glob("*_speeches.csv")):
             d = pd.read_csv(f)
             k = len(d) // 3
@@ -169,7 +171,8 @@ def main():
                              "trend": "up" if m[0] < m[1] < m[2] else "down" if m[0] > m[1] > m[2] else "mixed"})
         T = pd.DataFrame(rows); T["q"] = multipletests(T.p, method="fdr_bh")[1]
         S[f"temporal_{lab}"] = T.round(4).to_dict("records")
-    # Kappa (Table 5). "published" is the paper's set (ageing-population item included); "revised" drops it
+    # Kappa (Table 5). "revised" (the paper) drops the item from the ageing session, which is not in the corpus;
+    # "published" keeps it (the Overleaf version of 2026-11-01)
     R = pd.read_csv("data/validation/ratings_matrix.csv", index_col=0)
     excl = {"experts/future/committees.parliament.uk_speeches.csv/row_69", "assemblies/scotland/8992int020_speeches.csv/row_67",
             "experts/constitution/committees.parliament.uk_speeches.csv/row_0"}

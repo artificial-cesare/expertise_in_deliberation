@@ -8,8 +8,8 @@ Groups (substantial utterances, >= 5 content words):
 Per group: speakers (distinct labels in the assembly, where generic labels such as CITIZEN prevent a count of
 persons; distinct persons in the hearings), turns, mean LLM score and ArgQA, median tokens, disfluencies per 100 tokens. Gap: OLS
 of the score on group dummies and log length (reference: parliamentary witnesses), HC1 standard errors. Also: does
-the disfluency rate lower the LLM score at equal length? (Irish transcripts: the two assembly groups plus the
-ballot-design speakers of the ageing session, Ms Rickard-Clarke, Mr O'Shea and Ms Cliff.)
+the disfluency rate lower the LLM score at equal length? (assembly experts and citizens of the Eighth Amendment session;
+until 2026-11-19 also the ballot-design speakers of the ageing session, which is no longer in the corpus.)
 Run from the repo root (CL env):  python reproduce/expert_settings_v2.py   -> outputs/paper_v2/expert_settings_v2.json
 """
 import json, re, sys
@@ -62,8 +62,7 @@ for g in ORDER:
                         **({f"gap_{y}_p": float(m.pvalues[key]) for y, m in fits.items()} if g != ORDER[2] else {})}
 e, w = X[X.group == ORDER[0]].expertise_llm_score, X[X.group == ORDER[2]].expertise_llm_score
 OUT["assembly_experts_vs_witnesses_mwu_p"] = float(mannwhitneyu(e, w).pvalue)
-G = D[(D.folder == "ageing_population") & (D.num_non_function_words >= 5) & D.speaker.isin(["MS. RICKARD-CLARKE", "MR. O'SHEA", "MS. CLIFF"])]
-irish = pd.concat([X[X.group.str.startswith("Assembly")], G[cols[1:]].assign(group="ageing ballot speakers")], ignore_index=True)
+irish = X[X.group.str.startswith("Assembly")].copy()
 irish["loglen"] = np.log1p(irish.length_tokens); irish["disfl"] = irish.text.map(disfluency)
 m = smf.ols("expertise_llm_score ~ loglen + disfl", irish).fit(cov_type="HC1")
 OUT["irish_disfluency_effect"] = {"n": len(irish), "coef_per_100_tokens": round(float(m.params.disfl), 3), "p": float(m.pvalues.disfl)}

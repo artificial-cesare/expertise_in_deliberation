@@ -72,7 +72,8 @@ res = []
 for name in ("base", "finetuned"):
     Xe = np.load(CACHE / f"{name}_experts.npy")[keep]
     Xa = np.zeros((len(S), Xe.shape[1]), dtype=Xe.dtype)
-    Xa[~AGE] = np.load(CACHE / f"{name}_assembly.npy"); Xa[AGE] = np.load(CACHE / f"{name}_assembly_ageing.npy")
+    Xa[~AGE] = np.load(CACHE / f"{name}_assembly.npy")
+    if AGE.any(): Xa[AGE] = np.load(CACHE / f"{name}_assembly_ageing.npy")  # ageing session, only with load(include_ageing=True)
     spaces = {"Full (1,024-d)": (Xe, Xa, None)}
     for nc in (100, 10):
         p = joblib.load(CV2 / name / "pca.pkl") if nc == 100 else PCA(n_components=nc, random_state=42).fit(Xe)

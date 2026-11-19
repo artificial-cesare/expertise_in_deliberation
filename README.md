@@ -7,6 +7,8 @@ and compares both with 14 handcrafted linguistic features and the ArgQA argument
 
 Assemblies: Irish Citizens' Assembly on the Eighth Amendment ("Constitutional Reform"), Irish
 Citizens' Assembly on Gender Equality, and Citizens' Assembly of Scotland ("Public Policy").
+The Irish assembly's voting session on the ageing population (`data/assemblies/processed_files/ageing_population/`)
+is not part of the analysed corpus since 2026-11-19 (see "Points to know" below).
 
 ## Layout
 
@@ -118,7 +120,7 @@ The features in the CSVs were computed by `code/handcrafted_features/new_feats_e
   figure was most likely made from an earlier copy of the CSVs. `--scotland-llm drop` reproduces the figures;
   `keep` uses all three (for example, LLM score vs. normalised length goes from r = .51 to .32;
   vs. ArgQA it stays at .67–.68).
-- **Content-word threshold: ≥ 5 everywhere** (3,607 substantial utterances): tables, correlations,
+- **Content-word threshold: ≥ 5 everywhere** (3,413 substantial utterances without the ageing session): tables, correlations,
   temporal tests, embeddings, ArgQA and LLM scoring, and the context calibration. The published
   (Overleaf) correlation figures used > 5 (3,183) and the published temporal tests no filter;
   `correlations.py --legacy-gt5` and `temporal_kw.py --min-words 0` rebuild those.
@@ -145,15 +147,26 @@ The features in the CSVs were computed by `code/handcrafted_features/new_feats_e
   `reproduce/expert_gap_length_v2.py` (exploratory) tests whether experts speak longer and score higher at equal length
   (Eighth Amendment session, hearings, pooled): OLS and ordered logit with a length spline, length matching, a stratified
   permutation test and per-speaker residuals. Writes `outputs/paper_v2/expert_gap_length_v2.json`.
+- **Calibration numbers** (`reproduce/calibration_v2.py`): every value of the paper's calibration paragraphs and table
+  from the three Appendix A runs, without the ageing items (`--include-ageing` reproduces the earlier numbers).
+  Writes `outputs/paper_v2/calibration_v2.json`.
+- **Irish assemblies only** (`reproduce/irish_only_v2.py`, paper table `irish_only`): raw and partial correlations for all
+  assemblies and for the two Irish ones, with two length-free versions of numerical specificity
+  (`outputs/paper_v2/numbers_rate_v2.csv`, spaCy `like_num`). Writes `outputs/paper_v2/irish_only_v2.json`.
 - **Context size** (`reproduce/context_window_v2.py`): tokens (gpt-4o-mini tokenizer) in the judge's 20-utterance window
   and in the full transcripts, for the paper's context-calibration paragraph and Limitations.
   Writes `outputs/paper_v2/context_window_v2.json`.
 - **Topic-subtracted embeddings** (`reproduce/style_contrast_v2.py`, exploratory): each utterance minus the
   speaker-balanced mean of its own hearing or transcript, in the full space, then PCA-100 and k-means on the witnesses
   as in the main analysis; with topic-removal, validity and topic-specificity checks.
-- **Ageing session rescored.** It was first scored with the Eighth Amendment topic string;
-  `reproduce/rescore_ageing.py` rescored it with its own topic into `outputs/paper_v2/llm_v2.csv`.
-  `paper_v2_stats.load()` merges both files over the stored CSV columns (originals kept as `*_v1`); the data CSVs are unchanged.
+- **Ageing session left out (2026-11-19).** The voting session on the ageing population is a vote on a different
+  topic, nearly all of its turns come from the chair, facilitators, secretariat or speakers of unrecorded role, and no
+  expert hearings on that topic exist. `paper_v2_stats.load()` leaves it out by default (3,413 substantial utterances;
+  `load(include_ageing=True)` adds it to Constitutional Reform, 3,607). Every v2 script uses the default;
+  `centroids_v2.py` still embeds the session into `embeddings_v2.csv` but leaves it out of the accuracies. Earlier it was
+  scored with the Eighth Amendment topic string and rescored with its own topic (`reproduce/rescore_ageing.py`,
+  `outputs/paper_v2/llm_v2.csv`); the calibration runs and one annotated item include it, and `calibration_v2.py` and
+  the kappa (`paper_v2_stats.py`, "revised") drop those items.
 - **Normalised features are scaled per transcript file**, not per corpus
   (`compute_corpus_statistics` runs once per CSV in `new_feats_extract.py`).
 - **The embedding columns** (`distance_*`, `similarity_*`) were written on the GPU server by a
