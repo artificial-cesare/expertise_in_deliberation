@@ -138,6 +138,16 @@ The features in the CSVs were computed by `code/handcrafted_features/new_feats_e
   utterances); the fine-tuned model was trained on all turns. Results with all turns are kept in
   `outputs/paper_v2/_all_hearing_turns_2026-11-12/`. `reproduce/expert_settings_v2.py` compares assembly experts,
   citizens, witnesses and committee members (LLM score, ArgQA, disfluencies).
+- **Length in expert speech** (`reproduce/expert_length_v2.py`, paper table `expert_length`): LLM score by length
+  quarter for the experts and citizens of the Eighth Amendment session, correlations with log length by half,
+  the low-scoring expert turns and embedding distance by quarter; then citizens of all assemblies against assembly
+  experts and parliamentary witnesses (common token bins, slopes, interaction). Writes `outputs/paper_v2/expert_length_v2.json`.
+  `reproduce/expert_gap_length_v2.py` (exploratory) tests whether experts speak longer and score higher at equal length
+  (Eighth Amendment session, hearings, pooled): OLS and ordered logit with a length spline, length matching, a stratified
+  permutation test and per-speaker residuals. Writes `outputs/paper_v2/expert_gap_length_v2.json`.
+- **Context size** (`reproduce/context_window_v2.py`): tokens (gpt-4o-mini tokenizer) in the judge's 20-utterance window
+  and in the full transcripts, for the paper's context-calibration paragraph and Limitations.
+  Writes `outputs/paper_v2/context_window_v2.json`.
 - **Topic-subtracted embeddings** (`reproduce/style_contrast_v2.py`, exploratory): each utterance minus the
   speaker-balanced mean of its own hearing or transcript, in the full space, then PCA-100 and k-means on the witnesses
   as in the main analysis; with topic-removal, validity and topic-specificity checks.
