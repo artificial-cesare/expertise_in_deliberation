@@ -144,7 +144,7 @@ def compute_retrieval(model: SentenceTransformer, texts: List[str],
                      labels: np.ndarray, k_values: List[int]) -> Dict[str, float]:
     """Compute Retrieval@K metrics."""
     embeddings = model.encode(texts, convert_to_tensor=True, show_progress_bar=False, batch_size=32)
-    sims = model.similarity(embeddings, embeddings).cpu().numpy()
+    sims = model.similarity(embeddings.float(), embeddings.float()).cpu().numpy()  # float32: numpy has no bf16
     
     metrics = {}
     n = len(texts)
@@ -175,7 +175,7 @@ def compute_separation(model: SentenceTransformer, texts: List[str],
             continue
         
         embs = model.encode(topic_texts, convert_to_tensor=True, show_progress_bar=False)
-        sims = model.similarity(embs, embs).cpu().numpy()
+        sims = model.similarity(embs.float(), embs.float()).cpu().numpy()
         mask = np.triu(np.ones_like(sims, dtype=bool), k=1)
         intra_sims.extend(sims[mask])
     
@@ -188,7 +188,7 @@ def compute_separation(model: SentenceTransformer, texts: List[str],
             emb1 = model.encode(texts1, convert_to_tensor=True, show_progress_bar=False)
             emb2 = model.encode(texts2, convert_to_tensor=True, show_progress_bar=False)
             
-            inter_sims.extend(model.similarity(emb1, emb2).cpu().numpy().flatten())
+            inter_sims.extend(model.similarity(emb1.float(), emb2.float()).cpu().numpy().flatten())
     
     if not intra_sims or not inter_sims:
         return 0.0
