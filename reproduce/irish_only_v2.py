@@ -3,9 +3,9 @@
 Substantial utterances (>= 5 content words), revised corpus (paper_v2_stats.load(), ageing session left out).
 For each feature: raw Pearson r and partial r (both variables residualised on log(1 + tokens) and assembly dummies,
 paper_v2_stats.partial), for all assemblies and for Constitutional Reform + Gender Equality.
-Two length-free versions of numerical specificity: "contains a number" and numbers per 100 tokens, where numbers are
-spaCy tokens with like_num and tokens are all spaCy tokens (en_core_web_sm); they are read from
-outputs/paper_v2/numbers_rate_v2.csv, which this script writes when it is missing.
+Features in raw units (features_v2.py): numerical specificity is numbers per 100 words; "contains a number" (has_num_v2)
+is reported alongside. Until 2026-11-22 numerical specificity was the per-transcript capped count, with "contains a
+number" and numbers per 100 spaCy tokens as length-free versions.
 Also: share of the public-policy material, SD of the score, and share of utterances with a hedge or booster.
 Run from the repo root (CL env):  python reproduce/irish_only_v2.py   -> outputs/paper_v2/irish_only_v2.json
 """
@@ -15,22 +15,14 @@ import numpy as np, pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paper_v2_stats import load, r_p, partial
 
-OUT = Path("outputs/paper_v2/irish_only_v2.json"); NUM = Path("outputs/paper_v2/numbers_rate_v2.csv")
+OUT = Path("outputs/paper_v2/irish_only_v2.json")
 Y = "expertise_llm_score"
-FEATS = ["overall_score", "specificity_length_norm", "specificity_mean_word_len_norm", "lexical_sophistication",
-         "syntactic_complexity", "jargon_density", "reasoning_markers", "epistemic_balance", "specificity_numbers_norm",
-         "has_num", "num_rate"]
+FEATS = ["overall_score", "mean_word_length", "lexical_sophistication", "syntactic_complexity", "jargon_density",
+         "reasoning_markers", "epistemic_balance", "numerical_specificity", "has_num"]
 
 D = load(); S = D[D.num_non_function_words >= 5].copy()
-if not NUM.exists():
-    import spacy
-    nlp = spacy.load("en_core_web_sm"); rows = []
-    for f, r, t in zip(S.file, S.row, S.text.astype(str)):
-        doc = nlp(t); n = sum(tok.like_num for tok in doc)
-        rows.append({"file": f, "row": r, "n_num": n, "n_tok": len(doc), "num_rate": 100 * n / len(doc), "has_num": float(n > 0)})
-    pd.DataFrame(rows).to_csv(NUM, index=False)
-S = S.merge(pd.read_csv(NUM)[["file", "row", "num_rate", "has_num"]], on=["file", "row"], how="left")
-assert S.num_rate.notna().all()
+S["has_num"] = S.has_num_v2
+assert S.numerical_specificity.notna().all()
 IR = S[S.assembly != "Public Policy"]
 
 out = {"n_all": len(S), "n_irish": len(IR),

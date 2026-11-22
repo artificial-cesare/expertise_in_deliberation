@@ -18,8 +18,8 @@ from paper_v2_stats import load
 D = load(); S = D[D.num_non_function_words >= 5].reset_index(drop=True)
 MEAS = {"expertise_llm_score": "LLM score", "overall_score": "ArgQA", "lexical_sophistication": "Lexical sophistication",
         "similarity_base": "Similarity (base)", "similarity_finetuned": "Similarity (fine-tuned)",
-        "specificity_numbers_norm": "Numerical specificity", "specificity_content_prop": "Content-word proportion",
-        "specificity_mean_word_len_norm": "Mean word length"}
+        "numerical_specificity": "Numerical specificity", "specificity_content_prop": "Content-word proportion",
+        "mean_word_length": "Mean word length"}
 X = np.column_stack([np.ones(len(S)), S.loglen])
 for m in MEAS:
     ok = S[m].notna().values

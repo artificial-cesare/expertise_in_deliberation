@@ -7,8 +7,11 @@ facilitators or speakers of unrecorded role, and no expert hearings on the agein
 load(include_ageing=True) brings it back, as part of "Constitutional Reform" (the corpus of 2026-11-12 to 2026-11-19).
 All three assemblies' LLM scores are used.
 Substantial utterances: >= 5 content words everywhere ("gt5" results are kept for comparison only).
-lexical_sophistication and evidential_markers are the corrected v2 columns from
-outputs/paper_v2/features_v2.csv (run reproduce/features_v2.py first); the originals are kept as *_v1.
+Features from outputs/paper_v2/features_v2.csv (run reproduce/features_v2.py first). Since 2026-11-22 the paper's
+features are in raw units, with no per-transcript scaling: lexical_sophistication = 9 - mean content-word Zipf,
+mean_word_length (characters), numerical_specificity (numbers per 100 words); normalised length is dropped (length_tokens
+is the length measure). evidential_markers is the broader v2 detector. Kept for comparison: *_v1 (the CSV columns) and
+lexical_sophistication_scaled / specificity_numbers_norm (the corrected per-transcript versions of 2026-11-01/-20).
 Writes outputs/paper_v2/stats.json and prints a readable summary.
 Run from the repo root:  python reproduce/paper_v2_stats.py
 """
@@ -25,8 +28,7 @@ AGEING = {"ageing_population": "Constitutional Reform"}  # ageing voting session
 EMB = ["distance_base", "similarity_base", "distance_finetuned", "similarity_finetuned"]
 FEATS = ["jargon_density", "lexical_sophistication", "syntactic_complexity", "reasoning_markers", "evidential_markers",
          "length_tokens", "num_non_function_words", "hedge_density", "booster_density", "epistemic_balance",
-         "specificity_length_norm", "specificity_mean_word_len_norm", "specificity_numbers_norm",
-         "specificity_content_prop", "overall_score", "distance_base", "similarity_base",
+         "mean_word_length", "numerical_specificity", "specificity_content_prop", "overall_score", "distance_base", "similarity_base",
          "distance_finetuned", "similarity_finetuned", "expertise_llm_score"]
 EXPERTS = {"DR. WALSH", "DR. DOYLE", "PROFESSOR MADDEN", "DR. DUNN", "DR. FORAN"}  # Expert Advisory Group / medical experts
 
@@ -71,8 +73,9 @@ def load(include_ageing_embeddings: bool = True, embeddings: str = "v2", llm: st
     if v2.exists():
         d["row"] = d.groupby("file").cumcount()
         d = d.merge(pd.read_csv(v2).drop(columns="folder"), on=["file", "row"], how="left")
-        for f in ("lexical_sophistication", "evidential_markers"):
+        for f in ("lexical_sophistication", "evidential_markers", "specificity_numbers_norm"):
             d[f + "_v1"] = d[f]; d[f] = d[f + "_v2"]
+        d["lexical_sophistication_scaled"] = d.lexical_sophistication; d["lexical_sophistication"] = d.lexical_sophistication_raw
     if "row" not in d: d["row"] = d.groupby("file").cumcount()
     emb = Path("outputs/paper_v2/embeddings_v2.csv")
     if embeddings == "v2" and emb.exists():
@@ -132,7 +135,7 @@ def main():
                                    "len_asm": partial(s, "expertise_llm_score", f, True)}
                                for f in FEATS if f not in ("expertise_llm_score", "length_tokens")}
         S[f"partial_argqa_{lab}"] = {f: partial(s, "overall_score", f, True) for f in
-                                     ["specificity_mean_word_len_norm", "jargon_density", "syntactic_complexity", "lexical_sophistication"]}
+                                     ["mean_word_length", "jargon_density", "syntactic_complexity", "lexical_sophistication"]}
         S[f"within_{lab}"] = {a: {f: r_p(g.expertise_llm_score, g[f]) for f in FEATS if f != "expertise_llm_score"}
                               for a, g in s.groupby("assembly")}
         # Variance explained

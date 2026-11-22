@@ -19,8 +19,8 @@ FEATURES = {"expertise_llm_score": "LLM expertise score (1–5)", "overall_score
             "lexical_sophistication": "Lexical sophistication", "similarity_finetuned": "Similarity to expert centroid (fine-tuned)",
             "similarity_base": "Similarity to expert centroid (base)", "distance_finetuned": "Distance to expert centroid (fine-tuned)",
             "length_tokens": "Utterance length (tokens)", "num_non_function_words": "Non-function words",
-            "specificity_length_norm": "Normalised length", "specificity_content_prop": "Content-word proportion",
-            "specificity_numbers_norm": "Numerical specificity"}
+            "specificity_content_prop": "Content-word proportion", "numerical_specificity": "Numerical specificity (per 100 words)",
+            "mean_word_length": "Mean word length (characters)"}
 ASSEMBLIES = ["Constitutional Reform", "Gender Equality", "Public Policy"]
 WINDOWS = ["start", "middle", "end"]
 INK, MUTED, MARK, GRID = "#0b0b0b", "#52514e", "#2a78d6", "#e6e5e0"

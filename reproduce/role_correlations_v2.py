@@ -15,7 +15,7 @@ from pathlib import Path
 import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paper_corr import ComprehensiveCorrelationAnalyzer
-from paper_v2_stats import load, FEATS as PAPER_COLS  # the 20 columns of figures_v2.PAPER_COLS
+from paper_v2_stats import load, FEATS as PAPER_COLS  # the 19 columns of figures_v2.PAPER_COLS
 
 OUT = Path("outputs/paper_v2/correlations_roles")
 D = load(); D = D[D.num_non_function_words >= 5]

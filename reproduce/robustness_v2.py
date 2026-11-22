@@ -31,7 +31,7 @@ def compare(col):
 OUT["experts_vs_citizens"] = {"n_expert": len(e), "n_citizen": len(p),
                               "length_tokens": compare("length_tokens"), "words": compare("words"),
                               "mean_word_len_raw": compare("mean_word_len_raw"),
-                              "mean_word_len_norm": compare("specificity_mean_word_len_norm")}
+                              "mean_word_length": compare("mean_word_length")}
 # mean word length gap at equal length (word length and length are correlated)
 xx = pd_ = c[c.role.isin(["expert", "participant"])].dropna(subset=["mean_word_len_raw"])
 res = residual(xx.mean_word_len_raw.values, [xx.loglen])
@@ -42,8 +42,8 @@ OUT["median_tokens_by_role"] = (D[D.num_non_function_words >= 5].groupby(["assem
                                 .median().round(1).reset_index().to_dict("records"))
 
 # ---- 2. threshold sweep ----------------------------------------------------------------------------
-FEATS = ["overall_score", "specificity_length_norm", "specificity_mean_word_len_norm", "lexical_sophistication",
-         "jargon_density", "syntactic_complexity", "specificity_numbers_norm", "epistemic_balance",
+FEATS = ["overall_score", "mean_word_length", "lexical_sophistication",
+         "jargon_density", "syntactic_complexity", "numerical_specificity", "epistemic_balance",
          "reasoning_markers", "evidential_markers", "similarity_base", "similarity_finetuned"]
 sweep = {}
 profiles = {}
@@ -56,7 +56,7 @@ for thr in (5, 10, 20):
            "llm_pooled": {"mean": round(s.expertise_llm_score.mean(), 2), "sd": round(s.expertise_llm_score.std(), 2)},
            "r_loglen": r_p(s.expertise_llm_score, s.loglen),
            "raw": {f: r_p(s.expertise_llm_score, s[f]) for f in FEATS},
-           "partial": {f: partial(s, "expertise_llm_score", f, True) for f in FEATS if f != "specificity_length_norm"}}
+           "partial": {f: partial(s, "expertise_llm_score", f, True) for f in FEATS}}
     k = s[(s.folder == "8th_amendment") & s.role.isin(["expert", "participant"])]
     rr = residual(k.expertise_llm_score.values, [k.loglen])
     row["known_groups"] = {"n_expert": int((k.role == "expert").sum()), "n_citizen": int((k.role == "participant").sum()),

@@ -9,6 +9,22 @@ NaN when an utterance has fewer than 5 content words.
 
 evidential_markers_v2 uses reproduce/evidential_v2.py (broader patterns, by evidence type).
 
+specificity_numbers_norm_v2 fixes a second mismatch (2026-11-20): each utterance's count of numbers was spaCy's
+like_num, but the per-file 95th percentile it is scaled by counted digit strings (regex \b\d+\b), so spelled-out
+numbers ("five", "a hundred") raised the count but never the scale; in files where people spell numbers out the
+95th percentile was 0, floored to 1, and the feature became 0/1. v2 counts the same tokens on both sides: like_num
+and part of speech NUM (which drops ordinals used as discourse markers, "first of all", and nominal "one"). Scale
+as in the original: max(1, int(p95)) over the file's non-empty utterances, min(count, scale) / scale.
+Also written: n_numbers_v2 (the count), has_num_v2 and num_rate_v2 (numbers per 100 spaCy tokens).
+
+Raw units (2026-11-22; the paper uses these, paper_v2_stats.load()). Per-transcript scaling made a value a rank within
+its own discussion, unstable in short transcripts and not comparable across assemblies, so the paper's features are
+now in natural units, NaN below 5 content words:
+  - mean_word_length: mean characters per alphabetic token;
+  - numerical_specificity: numbers per 100 words (numbers as above; words = alphabetic tokens and numerals);
+  - lexical_sophistication_raw: 9 - mean Zipf frequency of the content words with a known frequency, i.e. the mean
+    -log10 of their relative frequency (Zipf = log10 of frequency per billion words): 4 means one in 10,000 words.
+
 Writes outputs/paper_v2/features_v2.csv (one row per utterance: assembly folder, file, row).
 Run from the repo root:  python reproduce/features_v2.py
 """
@@ -38,20 +54,29 @@ for folder in ["8th_amendment", "ageing_population", "gendereq", "scotland"]:
         pool = [z for d in NLP.pipe([t.lower() for t in texts if t.strip()], batch_size=64) for z in content_zipfs(d)]
         p95, p5 = (np.percentile(pool, 95), np.percentile(pool, 5)) if pool else (6.5, 3.0)
         if p95 <= p5: p95, p5 = 6.5, 3.0
+        nnum = [sum(t_.like_num and t_.pos_ == "NUM" for t_ in d) for d in docs]
+        nmax = max(1, int(np.percentile([n for n, t in zip(nnum, texts) if t.strip()], 95))) if any(t.strip() for t in texts) else 3
         for i, (t, d) in enumerate(zip(texts, docs)):
             n_alpha = sum(t_.is_alpha for t_ in d)
             n_content = sum(t_.is_alpha and not t_.is_stop for t_ in d)
             rec = {"folder": folder, "file": f.name, "row": i}
             if n_content < 5:
-                rec.update(lexical_sophistication_v2=np.nan, evidential_markers_v2=np.nan)
+                rec.update(lexical_sophistication_v2=np.nan, evidential_markers_v2=np.nan, specificity_numbers_norm_v2=np.nan,
+                           mean_word_length=np.nan, numerical_specificity=np.nan, lexical_sophistication_raw=np.nan)
             else:
                 zs = content_zipfs(d)
                 avg = np.mean(zs) if zs else p95
                 rec["lexical_sophistication_v2"] = float(np.clip((p95 - avg) / max(p95 - p5, 1.0), 0, 1))
                 rec["evidential_markers_v2"] = evidential_v2(t, n_alpha)
+                rec["specificity_numbers_norm_v2"] = min(nnum[i], nmax) / nmax
+                rec["mean_word_length"] = float(np.mean([len(t_.text) for t_ in d if t_.is_alpha]))
+                n_words = sum(t_.is_alpha or (t_.like_num and t_.pos_ == "NUM") for t_ in d)
+                rec["numerical_specificity"] = 100 * nnum[i] / n_words
+                rec["lexical_sophistication_raw"] = 9 - float(np.mean(zs)) if zs else np.nan
                 rec.update({f"evid_{k}": v for k, v in evidential_counts(t).items()})
+            rec.update(n_numbers_v2=nnum[i], has_num_v2=float(nnum[i] > 0), num_rate_v2=100 * nnum[i] / max(len(d), 1))
             rows.append(rec)
-        print(f"{folder}/{f.name}: {len(df)} rows, zipf p5={p5:.2f} p95={p95:.2f}", flush=True)
+        print(f"{folder}/{f.name}: {len(df)} rows, zipf p5={p5:.2f} p95={p95:.2f}, numbers scale={nmax}", flush=True)
 out = Path("outputs/paper_v2"); out.mkdir(parents=True, exist_ok=True)
 pd.DataFrame(rows).to_csv(out / "features_v2.csv", index=False)
 print("saved", out / "features_v2.csv")

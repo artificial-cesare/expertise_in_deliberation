@@ -3,12 +3,12 @@ import json
 import pandas as pd
 S = json.load(open("outputs/paper_v2/stats.json"))
 A = ["Constitutional Reform", "Gender Equality", "Public Policy"]
-NAMES = {"jargon_density": "Jargon density", "lexical_sophistication": "Lexical sophistication (corrected)",
+NAMES = {"jargon_density": "Jargon density", "lexical_sophistication": "Lexical sophistication (rarity)",
          "syntactic_complexity": "Syntactic complexity", "reasoning_markers": "Reasoning markers",
          "evidential_markers": "Evidential markers (v2)", "length_tokens": "Length (tokens)",
          "num_non_function_words": "Non-function words", "hedge_density": "Hedge density", "booster_density": "Booster density",
-         "epistemic_balance": "Epistemic balance", "specificity_length_norm": "Normalised length",
-         "specificity_mean_word_len_norm": "Mean word length", "specificity_numbers_norm": "Numerical specificity",
+         "epistemic_balance": "Epistemic balance",
+         "mean_word_length": "Mean word length", "numerical_specificity": "Numerical specificity",
          "specificity_content_prop": "Content-word proportion", "overall_score": "ArgQA overall score",
          "distance_base": "Distance (base)", "similarity_base": "Similarity (base)",
          "distance_finetuned": "Distance (fine-tuned)", "similarity_finetuned": "Similarity (fine-tuned)",
@@ -38,13 +38,13 @@ print(f"\nLog length vs LLM r = {R(c['loglen']['expertise_llm_score']['r'])}, vs
       f"Variance in LLM score explained (R²): assembly {S['r2_ge5']['assembly']}, log length {S['r2_ge5']['loglen']}, both {S['r2_ge5']['both']}.")
 print("ArgQA partial r (length + assembly): " + ", ".join(f"{NAMES[k]} {R(v['r'])}" for k, v in pa.items()))
 print(f"Distance vs similarity: base r = {R(c['dist_sim_base']['r'])}, fine-tuned r = {R(c['dist_sim_finetuned']['r'])}. "
-      f"Base similarity vs mean word length r = {R(c['similarity_base']['specificity_mean_word_len_norm']['r'])}, vs ArgQA r = {R(c['similarity_base']['overall_score']['r'])}; "
+      f"Base similarity vs mean word length r = {R(c['similarity_base']['mean_word_length']['r'])}, vs ArgQA r = {R(c['similarity_base']['overall_score']['r'])}; "
       f"fine-tuned similarity vs ArgQA r = {R(c['similarity_finetuned']['overall_score']['r'])} (all p < .001).\n")
 print("### Within-assembly correlations with the LLM score\n")
 w = S["within_ge5"]
 print(md(pd.DataFrame([{"Feature": NAMES[f], **{f"{a} (n = {w[a]['overall_score']['n']})": (R(w[a][f]["r"]) if w[a].get(f) else "—") for a in A}}
-                       for f in ["overall_score", "specificity_length_norm", "length_tokens", "specificity_mean_word_len_norm", "jargon_density",
-                                 "lexical_sophistication", "syntactic_complexity", "specificity_numbers_norm", "epistemic_balance", "similarity_base", "similarity_finetuned"]])))
+                       for f in ["overall_score", "length_tokens", "mean_word_length", "jargon_density",
+                                 "lexical_sophistication", "syntactic_complexity", "numerical_specificity", "epistemic_balance", "similarity_base", "similarity_finetuned"]])))
 print("\n### LLM score distribution (share of substantial utterances)\n")
 print(md(pd.DataFrame([{"Assembly": a, **{f"{int(float(k))}": f"{v:.0%}" for k, v in S["llm_dist"][a].items()}} for a in A])))
 print("\n### Speaker roles\n")

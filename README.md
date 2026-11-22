@@ -106,6 +106,13 @@ bash reproduce/run_all.sh        # PY=/path/to/python picks the environment
 | Results "Time Difference Analysis", Table 7 | `reproduce/temporal_kw.py` | yes, all values, with `--min-words 0` |
 | Context calibration (Methods) | `code/LLM_expertise/context_size_calibration.py` | needs the API; the surviving run is in `records/context_calibration_summary.txt` |
 
+The second part of `run_all.sh` rebuilds the revised paper (v2): every `reproduce/*_v2.py` script, `paper_v2_stats.py`,
+`embedding_space_check.py` and `rewrite_numbers.py`, in dependency order, into `outputs/paper_v2/`. Besides the CSVs it
+needs three inputs kept in `outputs/` (untracked, not checksummed): the cached Qwen3 embeddings
+(`outputs/paper_v2/embedding_check/`), the three calibration runs (`outputs/paper_v2/calibration_appendixA/`) and the
+stored PCA and centroids (`outputs/embeddings/*_kmeans_global_pca/models/`); the script stops if one is missing.
+`rescore_ageing.py` (API) and `umap_figures_v2.sh` (superseded by `latent_figures_v2.py`) are not run.
+
 `reproduce/paper_corr.py` is a frozen copy of the correlation code the figures were made with.
 `code/correlation_analysis/corr.py` is the later, refactored version and scales features differently.
 The features in the CSVs were computed by `code/handcrafted_features/new_feats_extract.py`;
@@ -152,7 +159,7 @@ The features in the CSVs were computed by `code/handcrafted_features/new_feats_e
   Writes `outputs/paper_v2/calibration_v2.json`.
 - **Irish assemblies only** (`reproduce/irish_only_v2.py`, paper table `irish_only`): raw and partial correlations for all
   assemblies and for the two Irish ones, with two length-free versions of numerical specificity
-  (`outputs/paper_v2/numbers_rate_v2.csv`, spaCy `like_num`). Writes `outputs/paper_v2/irish_only_v2.json`.
+  (numbers counted as in `features_v2.py`). Writes `outputs/paper_v2/irish_only_v2.json`.
 - **Context size** (`reproduce/context_window_v2.py`): tokens (gpt-4o-mini tokenizer) in the judge's 20-utterance window
   and in the full transcripts, for the paper's context-calibration paragraph and Limitations.
   Writes `outputs/paper_v2/context_window_v2.json`.
@@ -167,8 +174,13 @@ The features in the CSVs were computed by `code/handcrafted_features/new_feats_e
   scored with the Eighth Amendment topic string and rescored with its own topic (`reproduce/rescore_ageing.py`,
   `outputs/paper_v2/llm_v2.csv`); the calibration runs and one annotated item include it, and `calibration_v2.py` and
   the kappa (`paper_v2_stats.py`, "revised") drop those items.
-- **Normalised features are scaled per transcript file**, not per corpus
-  (`compute_corpus_statistics` runs once per CSV in `new_feats_extract.py`).
+- **Features in raw units (2026-11-22).** `new_feats_extract.py` scales length, mean word length, numbers and lexical
+  sophistication per transcript file (`compute_corpus_statistics` runs once per CSV), which makes a value a rank within
+  its own discussion, unstable in short files and not comparable across assemblies; the numbers and length components
+  also count different tokens in the utterance and in the scale. The revised paper uses raw units from `features_v2.py`
+  instead: `mean_word_length` (characters), `numerical_specificity` (numbers per 100 words, spaCy `like_num` tagged NUM),
+  `lexical_sophistication` = 9 − mean content-word Zipf; normalised length is dropped. `paper_v2_stats.load()` keeps the
+  scaled versions as `*_v1`, `lexical_sophistication_scaled` and `specificity_numbers_norm`.
 - **The embedding columns** (`distance_*`, `similarity_*`) were written on the GPU server by a
   variant of `code/embeddings/final_centroids.py`; its fine-tuned model path
   (`SIMCSE/qwen3_expert_contrastive_v2`) differs from the one `k_means_exp.py` and `plotting.py`
